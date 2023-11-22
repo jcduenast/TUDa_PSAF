@@ -1,0 +1,3 @@
+/home/ubi/opencv/projects/trajectories/CMakeFiles/trajectories.dir
+/home/ubi/opencv/projects/trajectories/CMakeFiles/edit_cache.dir
+/home/ubi/opencv/projects/trajectories/CMakeFiles/rebuild_cache.dir

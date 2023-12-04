@@ -13,101 +13,36 @@
 using namespace cv;
 using namespace std;
 
-std::vector<cv::Point> estimateTrayectory(std::vector<cv::Point> left, std::vector<cv::Point> center, std::vector<cv::Point> right);
-void straight(bool show_image);
-void sharpLeft(bool show_image);
-void slightRight(bool show_image);
+std::vector<cv::Point> estimateTrajectory(std::vector<cv::Point> left, std::vector<cv::Point> center, std::vector<cv::Point> right);
 void mockups(int setNum, bool show_image);
+void sharpLeft(bool show_image);
 void drawLane(cv::Mat img, std::vector<cv::Point> Lane, cv::Scalar color, int thickness);
 cv::Mat baseImage();
 
 int main(int argc, char** argv ) {
-	straight(true);
 	sharpLeft(true);
-	slightRight(true);
-	for(int i=0; i<8; i++){
+	for (int i=0; i<8; i++){
 		mockups(i, true);
 	}
     return 0;
 }
 
-std::vector<cv::Point> estimateTrayectory(std::vector<cv::Point> left, std::vector<cv::Point> center, std::vector<cv::Point> right){
-	std::vector<cv::Point> trayectory;
-	/*
-	estimate width of the lane
-	if none available... pick a line to follow
-	*/
+
+std::vector<cv::Point> estimateTrajectory(std::vector<cv::Point> left, std::vector<cv::Point> center, std::vector<cv::Point> right){
+	std::vector<cv::Point> trajectory;
 	cv::Point pf;		// for the easiest trayectory planning
-
-
-	pf.x = (right[0].x + center[0].x)/2;
-	pf.y = 10;
-	trayectory.push_back(pf);
-	return trayectory;
-}
-
-void straight(bool show_image){
-	std::vector<cv::Point> leftLane = {Point(100, 0), Point(89, 100), Point(100, 200), Point(100, 300)};
-	std::vector<cv::Point> centerLane = {Point(160, 0), Point(160, 100), Point(160, 200), Point(160, 300)};
-	std::vector<cv::Point> rightLane = {Point(460, 0), Point(460, 100), Point(460, 200), Point(460, 300)};
-	
-	Mat image = baseImage();
-	drawLane(image, rightLane, Scalar(0,255,0), 2);
-	drawLane(image, centerLane, Scalar(0,180,180), 1);
-	drawLane(image, leftLane, Scalar(0,0,255), 2);
-
-	std::vector<cv::Point> trayectory = estimateTrayectory(leftLane, centerLane, rightLane);
-	circle(image, trayectory[0], 7, Scalar(70, 180, 0), FILLED, LINE_8);
-	
-	imwrite("straight.png", image);
-	if (show_image) {
-		cv::imshow("Straight", image);
-		waitKey(0);
+	if (!right.empty() && !center.empty()){
+		pf.x = (right[0].x + center[0].x)/2;
+		pf.y = 10;
+		trajectory.push_back(pf);
+	}else{
+		pf.x = 0;
+		pf.y = 0;
+		trajectory.push_back(pf);
 	}
-	return;
+	return trajectory;
 }
 
-void sharpLeft(bool show_image){
-	std::vector<cv::Point> leftLane = {Point(0,140), Point(153,210), Point(200,337), Point(200,525)};
-	std::vector<cv::Point> centerLane = {Point(196,0), Point(342,149), Point(393,337), Point(393,525)};
-	std::vector<cv::Point> rightLane = {Point(484,0), Point(570,167), Point(594,337), Point(594,525)};
-	
-	Mat image = baseImage();
-	drawLane(image, rightLane, Scalar(0,255,0), 2);
-	drawLane(image, centerLane, Scalar(0,180,180), 1);
-	drawLane(image, leftLane, Scalar(0,0,255), 2);
-
-	std::vector<cv::Point> trayectory = estimateTrayectory(leftLane, centerLane, rightLane);
-	circle(image, trayectory[0], 7, Scalar(70, 180, 0), FILLED, LINE_8);
-	
-	imwrite("sharpLeft.png", image);
-	if (show_image) {
-		cv::imshow("sharp left", image);
-		waitKey(0);
-	}
-	return;
-}
-
-void slightRight(bool show_image){
-	std::vector<cv::Point> leftLane = {};
-	std::vector<cv::Point> centerLane = {Point(269,0), Point(187,179), Point(169,338), Point(187,525)};
-	std::vector<cv::Point> rightLane = {Point(678,6), Point(543,179), Point(505,337), Point(543,525)};
-	
-	Mat image = baseImage();
-	drawLane(image, rightLane, Scalar(0,255,0), 2);
-	drawLane(image, centerLane, Scalar(0,180,180), 1);
-	drawLane(image, leftLane, Scalar(0,0,255), 2);
-
-	std::vector<cv::Point> trayectory = estimateTrayectory(leftLane, centerLane, rightLane);
-	circle(image, trayectory[0], 7, Scalar(70, 180, 0), FILLED, LINE_8);
-	
-	imwrite("slightRight.png", image);
-	if (show_image) {
-		cv::imshow("slight right", image);
-		waitKey(0);
-	}
-	return;
-}
 
 void mockups(int setNum, bool show_image){
 	std::vector<cv::Point> leftLane;
@@ -116,19 +51,19 @@ void mockups(int setNum, bool show_image){
 
 	switch (setNum){
 		case 0:
-			leftLane = {Point(49,0), Point(56,34), Point(59,66), Point(57,103)};
-			centerLane = {Point(94,0), Point(104,34), Point(112,76), Point(116,126)};
+			leftLane = {Point(185,0), Point(203,130), Point(224,252), Point(217,391)};
+			centerLane = {Point(356,0), Point(394,130), Point(426,290), Point(441,477)};
 			rightLane = {};
 			break;
 		case 1:
-			leftLane = {Point(0,95), Point(37,105), Point(97,109), Point(122,104)};
-			centerLane = {Point(20,35), Point(43,42), Point(73,45), Point(100,44)};
+			leftLane = {Point(0,362), Point(141,399), Point(370,414), Point(463,396)};
+			centerLane = {Point(75,134), Point(165,161), Point(277,172), Point(378,167)};
 			rightLane = {};
 			break;
 		case 2:
 			leftLane = {};
-			centerLane = {Point(12,21), Point(25,49), Point(32,91), Point(31,123)};
-			rightLane = {Point(65,1), Point(82,36), Point(91,70), Point(95,102)};
+			centerLane = {Point(46,81), Point(96,188), Point(121,346), Point(120,466)};
+			rightLane = {Point(248,4), Point(310,138), Point(347,266), Point(361,389), Point(367,577)};
 			break;
 		case 3:
 			leftLane = {Point(4,163), Point(90,272), Point(154,339), Point(377,502), Point(467,544)};
@@ -162,8 +97,8 @@ void mockups(int setNum, bool show_image){
 	drawLane(image, centerLane, Scalar(0,180,180), 1);
 	drawLane(image, leftLane, Scalar(0,0,255), 2);
 
-	std::vector<cv::Point> trayectory = estimateTrayectory(leftLane, centerLane, rightLane);
-	circle(image, trayectory[0], 7, Scalar(70, 180, 0), FILLED, LINE_8);
+	std::vector<cv::Point> trajectory = estimateTrajectory(leftLane, centerLane, rightLane);
+	circle(image, trajectory[0], 7, Scalar(70, 180, 0), FILLED, LINE_8);
 	
 	string file_name = "mockup_";
 	file_name.append(std::to_string(setNum));
@@ -173,7 +108,28 @@ void mockups(int setNum, bool show_image){
 		cv::imshow(file_name, image);
 		waitKey(0);
 	}
-	return 0;
+	return;
+}
+
+void sharpLeft(bool show_image){
+	std::vector<cv::Point> leftLane = {Point(0,140), Point(153,210), Point(200,337), Point(200,525)};
+	std::vector<cv::Point> centerLane = {Point(196,0), Point(342,149), Point(393,337), Point(393,525)};
+	std::vector<cv::Point> rightLane = {Point(484,0), Point(570,167), Point(594,337), Point(594,525)};
+	
+	Mat image = baseImage();
+	drawLane(image, rightLane, Scalar(0,255,0), 2);
+	drawLane(image, centerLane, Scalar(0,180,180), 1);
+	drawLane(image, leftLane, Scalar(0,0,255), 2);
+
+	std::vector<cv::Point> trajectory = estimateTrajectory(leftLane, centerLane, rightLane);
+	circle(image, trajectory[0], 7, Scalar(70, 180, 0), FILLED, LINE_8);
+	
+	imwrite("sharpLeft.png", image);
+	if (show_image) {
+		cv::imshow("sharp left", image);
+		waitKey(0);
+	}
+	return;
 }
 
 void drawLane(cv::Mat img, std::vector<cv::Point> lane, cv::Scalar color, int thickness) {
@@ -187,8 +143,8 @@ void drawLane(cv::Mat img, std::vector<cv::Point> lane, cv::Scalar color, int th
 
 cv::Mat baseImage(){
 	// lane_width = 300px | just for visualization
-	int width = 700;
-	int height = 700;
+	int width = 480;
+	int height = 640;
 	int car_width = 200;
 	int car_height = 350;
 	Mat image(height, width, CV_8UC3, Scalar(0,0,0));

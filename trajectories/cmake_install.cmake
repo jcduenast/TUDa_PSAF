@@ -1,4 +1,4 @@
-# Install script for directory: /home/ubi/opencv/projects/trajectories
+# Install script for directory: /home/ubi/TUDa_PSAF/trajectories
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/ubi/opencv/projects/trajectories/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/ubi/TUDa_PSAF/trajectories/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

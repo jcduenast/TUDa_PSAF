@@ -25,6 +25,9 @@ int main(int argc, char** argv ) {
 	straight(true);
 	sharpLeft(true);
 	slightRight(true);
+	for(int i=0; i<8; i++){
+		mockups(i, true);
+	}
     return 0;
 }
 
@@ -106,12 +109,11 @@ void slightRight(bool show_image){
 	return;
 }
 
-
 void mockups(int setNum, bool show_image){
-	std::vector<cv::Point> leftLane = {Point(100, 0), Point(89, 100), Point(100, 200), Point(100, 300)};
-	std::vector<cv::Point> centerLane = {Point(160, 0), Point(160, 100), Point(160, 200), Point(160, 300)};
-	std::vector<cv::Point> rightLane = {Point(460, 0), Point(460, 100), Point(460, 200), Point(460, 300)};
-	
+	std::vector<cv::Point> leftLane;
+	std::vector<cv::Point> centerLane;
+	std::vector<cv::Point> rightLane;
+
 	switch (setNum){
 		case 0:
 			leftLane = {Point(49,0), Point(56,34), Point(59,66), Point(57,103)};
@@ -163,19 +165,20 @@ void mockups(int setNum, bool show_image){
 	std::vector<cv::Point> trayectory = estimateTrayectory(leftLane, centerLane, rightLane);
 	circle(image, trayectory[0], 7, Scalar(70, 180, 0), FILLED, LINE_8);
 	
-	string name = std::format("mockup{}.png", std::to_string(setNum));
-	imwrite(name , image);
+	string file_name = "mockup_";
+	file_name.append(std::to_string(setNum));
+	file_name.append(".png");
+	imwrite(file_name , image);
 	if (show_image) {
-		cv::imshow(name, image);
+		cv::imshow(file_name, image);
 		waitKey(0);
 	}
-	return;
+	return 0;
 }
-
 
 void drawLane(cv::Mat img, std::vector<cv::Point> lane, cv::Scalar color, int thickness) {
 	if (lane.size() != 0){
-		for (int i=1; i<lane.size(); i++){	// empty Vector not considered yet !!!!!
+		for (int i=1; i<lane.size(); i++){
 			line(img, lane[i-1], lane[i], color, thickness, LINE_8);
 		}
 	}

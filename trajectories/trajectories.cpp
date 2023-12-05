@@ -1,7 +1,8 @@
 // C++ program for the above approach 
 #include <iostream>
 #include <fstream>
-#include <opencv2/core/core.hpp> 
+#include <opencv2/core/core.hpp>
+#include <cmath>
   
 // Library to include for 
 // drawing shapes 
@@ -17,10 +18,22 @@ std::vector<cv::Point> estimateTrajectory(std::vector<cv::Point> left, std::vect
 void mockups(int setNum, bool show_image);
 void sharpLeft(bool show_image);
 void drawLane(cv::Mat img, std::vector<cv::Point> Lane, cv::Scalar color, int thickness);
+void drawLaneFromCarCS(cv::Mat img, std::vector<cv::Point> Lane, cv::Scalar color, int thickness);
 cv::Mat baseImage();
+cv::Point img2carCoordinate(cv::Point imgPoint);
+cv::Point car2imgCoordinate(cv::Point carSpacePoint);
+
+std::vector<cv::Point> img2carCoordinateVector(std::vector<cv::Point> line_in_img_coordinates);
+std::vector<cv::Point> car2imgCoordinateVector(std::vector<cv::Point> line_in_car_coordinates);
+
+int num_m_avg = 2; // min amount of points to average out the trajectory
+int img_width = 480;
+int img_height = 640;
+int car_width = 200;
+int car_height = 350;
 
 int main(int argc, char** argv ) {
-	sharpLeft(true);
+	// sharpLeft(true);
 	for (int i=0; i<8; i++){
 		mockups(i, true);
 	}
@@ -30,16 +43,80 @@ int main(int argc, char** argv ) {
 
 std::vector<cv::Point> estimateTrajectory(std::vector<cv::Point> left, std::vector<cv::Point> center, std::vector<cv::Point> right){
 	std::vector<cv::Point> trajectory;
-	cv::Point pf;		// for the easiest trayectory planning
-	if (!right.empty() && !center.empty()){
-		pf.x = (right[0].x + center[0].x)/2;
-		pf.y = 10;
-		trajectory.push_back(pf);
+	std::vector<cv::Point> right_car = img2carCoordinateVector(right);
+	std::vector<cv::Point> center_car = img2carCoordinateVector(center);
+	std::vector<cv::Point> left_car = img2carCoordinateVector(left);
+
+	// cout << "Size:" << left.size() << " " << center.size() << " " << right.size() << endl;
+
+	// cv::Point aux_point;
+	// std::vector<cv::Point> vector2avg;
+	// if (right.size() >= num_m_avg){
+	// 	for(int i=0; i<num_m_avg-1, i++){
+	// 		cv::Point aux_point;
+	// 		aux_point.x = right.at(i+1).x-right.at(i).x;
+	// 		aux_point.y = right.at(i+1).y-right.at(i).y;
+	// 		vector2avg.insert(vector2avg.end(), aux_point);
+	// 	}
+	// }else if(center.size() >= num_m_avg){
+	// 	for(int i=0; i<num_m_avg-1, i++){
+	// 		cv::Point aux_point;
+	// 		aux_point.x = center.at(i+1).x-center.at(i).x;
+	// 		aux_point.y = center.at(i+1).y-center.at(i).y;
+	// 		vector2avg.insert(vector2avg.end(), aux_point);
+	// 	}
+	// }else if(left.size() >= num_m_avg){
+	// 	for(int i=0; i<num_m_avg-1, i++){
+	// 		cv::Point aux_point;
+	// 		aux_point.x = left.at(i+1).x-left.at(i).x;
+	// 		aux_point.y = left.at(i+1).y-left.at(i).y;
+	// 		vector2avg.insert(vector2avg.end(), aux_point);
+	// 	}
+	// }
+
+	// estimate final point
+	cv:Point end_point_car;
+	float lane_width = 0;
+	if (!right.empty() && !center.empty()){		
+		lane_width = center_car.at(0).y-right_car.at(0).y;
+		end_point_car.y = center_car.at(0).y - lane_width/2;
+	} else if (!left.empty() && !center.empty()){
+		lane_width = left_car.at(0).y-center_car.at(0).y;
+		end_point_car.y = center_car.at(0).y - lane_width/2;
 	}else{
-		pf.x = 0;
-		pf.y = 0;
-		trajectory.push_back(pf);
+		end_point_car.y = 0;
 	}
+	end_point_car.x = img_height-10;
+
+
+	// Calcular el radio: -------------------------------------------------------------------------------
+	float Od2 = sqrt(pow(end_point_car.x, 2) + pow(end_point_car.y, 2))/2;
+	float sin_alpha = (end_point_car.y/2)/Od2;
+	float R;
+	if(sin_alpha!= 0){
+		R = Od2/sin_alpha;
+		cout << "R:" << R << endl;
+		float R_2 = R/2;
+		for (int x=0; x<end_point_car.x; x+=10){
+			float y;
+			if (R>0){
+				y=-(R/2)+sqrt(pow((R/2),2)-pow(x,2));
+			}else{
+				y=-(R/2)-sqrt(pow((R/2),2)-pow(x,2));
+			}
+			trajectory.insert(trajectory.end(), Point(x,y));
+			cout << "x: " << x << " y: " << y << endl;
+		}
+	}else{
+		for (int x=0; x<end_point_car.x; x+=10){
+			trajectory.insert(trajectory.end(), Point(x,0));
+			cout << "x: " << x << " y: " << 0 << endl;
+		}
+	}
+	trajectory.insert(trajectory.end(), end_point_car);
+
+	// cout << "lane width: " << lane_width << endl; // Achtung! Salen valores negativos :):
+	
 	return trajectory;
 }
 
@@ -97,9 +174,38 @@ void mockups(int setNum, bool show_image){
 	drawLane(image, centerLane, Scalar(0,180,180), 1);
 	drawLane(image, leftLane, Scalar(0,0,255), 2);
 
-	std::vector<cv::Point> trajectory = estimateTrajectory(leftLane, centerLane, rightLane);
-	circle(image, trajectory[0], 7, Scalar(70, 180, 0), FILLED, LINE_8);
+	// // the cange in coordinates works
+	// std::vector<cv::Point> car_CS_lane = img2carCoordinateVector(rightLane);
+	// drawLane(image, car_CS_lane, Scalar(255,255,0), 1);
+	// std::vector<cv::Point> img_CS_lane = car2imgCoordinateVector(car_CS_lane);
+	// drawLane(image, img_CS_lane, Scalar(255,0,255), 2);
+
+	cout << endl <<"Mockup #" << setNum << endl;
+	std::vector<cv::Point> trajectory_car_cs = estimateTrajectory(leftLane, centerLane, rightLane);	     // trajectory in car coordinates
+	std::vector<cv::Point> trajectory_img_cs = car2imgCoordinateVector(trajectory_car_cs);				 // trajectory in image coordinates
+	circle(image, trajectory_img_cs[trajectory_img_cs.size()-1], 7, Scalar(70, 180, 0), FILLED, LINE_8); // end-point
+	line(image, trajectory_img_cs[trajectory_img_cs.size()-1], trajectory_img_cs[0],Scalar(70, 70, 0), 2); // line from current position to end point
+	int numPoints = trajectory_car_cs.size();
+	cout <<"Size trajectory " << numPoints << endl;
+	cout <<"End point car coordinates: " << trajectory_car_cs[numPoints-1].x << " " << trajectory_car_cs[numPoints-1].y << endl;
 	
+	// // // calculated in car space
+	float Od2 = sqrt(pow(trajectory_car_cs[numPoints-1].x, 2) + pow(trajectory_car_cs[numPoints-1].y, 2))/2; //distance from endpoint
+	float sin_alpha = (trajectory_car_cs[trajectory_car_cs.size()-1].y/2)/Od2;
+	if(sin_alpha!= 0){
+		float R = Od2/sin_alpha;
+		cv::Point ICC = Point(0, R);
+		cv:Point ICC_img_cs = car2imgCoordinate(ICC);
+		circle(image, ICC_img_cs, abs(R), Scalar(150, 150, 0), 4, LINE_8);
+	}else{
+		line(image, trajectory_img_cs[0], trajectory_img_cs[numPoints-1],Scalar(70, 70, 0), 2);
+	}
+
+	// show the trajectory calculated
+	for(int i=0; i<numPoints; i++){
+		circle(image, trajectory_img_cs[i], 3, Scalar(255,255,0), -1, LINE_8);
+	}
+
 	string file_name = "mockup_";
 	file_name.append(std::to_string(setNum));
 	file_name.append(".png");
@@ -141,17 +247,63 @@ void drawLane(cv::Mat img, std::vector<cv::Point> lane, cv::Scalar color, int th
 	return;
 }
 
+void drawLaneFromCarCS(cv::Mat img, std::vector<cv::Point> lane, cv::Scalar color, int thickness) {
+	std::vector<cv::Point> lane_img_CS = car2imgCoordinateVector(lane);
+	if (lane_img_CS.size() != 0){
+		for (int i=1; i<lane_img_CS.size(); i++){
+			line(img, lane_img_CS[i-1], lane_img_CS[i], color, thickness, LINE_8);
+		}
+	}
+	return;
+}
+
 cv::Mat baseImage(){
 	// lane_width = 300px | just for visualization
-	int width = 480;
-	int height = 640;
-	int car_width = 200;
-	int car_height = 350;
-	Mat image(height, width, CV_8UC3, Scalar(0,0,0));
-	cv::Point pt1(width/2-car_width/2, height-car_height), pt2(width/2+car_width/2, height);
+	Mat image(img_height, img_width, CV_8UC3, Scalar(0,0,0));
+	cv::Point pt1(img_width/2-car_width/2, img_height-car_height), pt2(img_width/2+car_width/2, img_height);
 	cv::rectangle(image, pt1, pt2, cv::Scalar(150, 150, 150));
-	cv::arrowedLine(image, cv::Point(width/2,height), cv::Point(width/2, height-50), cv::Scalar(0,0,255), 4);
-	cv::arrowedLine(image, cv::Point(width/2,height), cv::Point(width/2-50, height), cv::Scalar(0,255,0), 4);
+	cv::arrowedLine(image, cv::Point(img_width/2,img_height), cv::Point(img_width/2, img_height-50), cv::Scalar(0,0,255), 4);
+	cv::arrowedLine(image, cv::Point(img_width/2,img_height), cv::Point(img_width/2-50, img_height), cv::Scalar(0,255,0), 4);
 	int thickness=1;
 	return image;
+}
+
+cv::Point img2carCoordinate(cv::Point imgPoint){
+	cv::Point point_in_car_coordinates;
+	point_in_car_coordinates.x = img_height-imgPoint.y;
+	point_in_car_coordinates.y = imgPoint.x - img_width/2;
+	return point_in_car_coordinates;
+}
+
+cv::Point car2imgCoordinate(cv::Point carSpacePoint){
+	cv::Point point_in_img_coordinates;
+	point_in_img_coordinates.x = carSpacePoint.y + img_width/2;
+	point_in_img_coordinates.y = img_height - carSpacePoint.x;
+	return point_in_img_coordinates;
+}
+
+std::vector<cv::Point> img2carCoordinateVector(std::vector<cv::Point> line_in_img_coordinates){
+	std::vector<cv::Point> vector_car_coordinates;
+	if(!line_in_img_coordinates.empty()){
+		for (int i=0; i<line_in_img_coordinates.size(); i++){
+			cv::Point point_car = img2carCoordinate(line_in_img_coordinates.at(i));
+			// point_car.x = img_height-line_in_img_coordinates.at(i).y;
+			// point_car.y = line_in_img_coordinates.at(i).x - img_width/2;
+			vector_car_coordinates.insert(vector_car_coordinates.end(), point_car);
+		}
+	}
+	return vector_car_coordinates;
+}
+
+std::vector<cv::Point> car2imgCoordinateVector(std::vector<cv::Point> line_in_car_coordinates){
+	std::vector<cv::Point> vector_img_coordinates;
+	if(!line_in_car_coordinates.empty()){
+		for (int i=0; i<line_in_car_coordinates.size(); i++){
+			cv::Point point_img = car2imgCoordinate(line_in_car_coordinates.at(i));
+			// point_img.x = line_in_car_coordinates.at(i).y + img_width/2;
+			// point_img.y = img_height - line_in_car_coordinates.at(i).x;
+			vector_img_coordinates.insert(vector_img_coordinates.end(), point_img);
+		}
+	}
+	return vector_img_coordinates;
 }

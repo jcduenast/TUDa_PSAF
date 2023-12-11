@@ -46,47 +46,23 @@ std::vector<cv::Point> estimateTrajectory(std::vector<cv::Point> left, std::vect
 	std::vector<cv::Point> right_car = img2carCoordinateVector(right);
 	std::vector<cv::Point> center_car = img2carCoordinateVector(center);
 	std::vector<cv::Point> left_car = img2carCoordinateVector(left);
-
-	// cout << "Size:" << left.size() << " " << center.size() << " " << right.size() << endl;
-
-	// cv::Point aux_point;
-	// std::vector<cv::Point> vector2avg;
-	// if (right.size() >= num_m_avg){
-	// 	for(int i=0; i<num_m_avg-1, i++){
-	// 		cv::Point aux_point;
-	// 		aux_point.x = right.at(i+1).x-right.at(i).x;
-	// 		aux_point.y = right.at(i+1).y-right.at(i).y;
-	// 		vector2avg.insert(vector2avg.end(), aux_point);
-	// 	}
-	// }else if(center.size() >= num_m_avg){
-	// 	for(int i=0; i<num_m_avg-1, i++){
-	// 		cv::Point aux_point;
-	// 		aux_point.x = center.at(i+1).x-center.at(i).x;
-	// 		aux_point.y = center.at(i+1).y-center.at(i).y;
-	// 		vector2avg.insert(vector2avg.end(), aux_point);
-	// 	}
-	// }else if(left.size() >= num_m_avg){
-	// 	for(int i=0; i<num_m_avg-1, i++){
-	// 		cv::Point aux_point;
-	// 		aux_point.x = left.at(i+1).x-left.at(i).x;
-	// 		aux_point.y = left.at(i+1).y-left.at(i).y;
-	// 		vector2avg.insert(vector2avg.end(), aux_point);
-	// 	}
-	// }
+	cv::Point lane_vector; // Vector from the furthest point in the centerline towards the right lane
 
 	// estimate final point
 	cv:Point end_point_car;
 	float lane_width = 0;
-	if (!right.empty() && !center.empty()){		
-		lane_width = center_car.at(0).y-right_car.at(0).y;
-		end_point_car.y = center_car.at(0).y - lane_width/2;
+	if (!right.empty() && !center.empty()){
+		end_point_car.y = (center_car.at(0).y + right_car.at(0).y)/2;
+		end_point_car.x = (center_car.at(0).x + right_car.at(0).x)/2;
 	} else if (!left.empty() && !center.empty()){
-		lane_width = left_car.at(0).y-center_car.at(0).y;
-		end_point_car.y = center_car.at(0).y - lane_width/2;
+		lane_vector = cv::Point((center_car.at(0).x-left_car.at(0).x)/2, (center_car.at(0).y-left_car.at(0).y)/2);
+		end_point_car.y = center_car.at(0).y + lane_vector.y;
+		end_point_car.x = center_car.at(0).x + lane_vector.x;
+		cout << "Left: " << left_car.at(0) << " center: " << center_car.at(0) << " lane vector: " << lane_vector << endl;
 	}else{
+		end_point_car.x = img_height-10;
 		end_point_car.y = 0;
 	}
-	end_point_car.x = img_height-10;
 
 
 	// Calcular el radio: -------------------------------------------------------------------------------
@@ -95,14 +71,17 @@ std::vector<cv::Point> estimateTrajectory(std::vector<cv::Point> left, std::vect
 	float R;
 	if(sin_alpha!= 0){
 		R = Od2/sin_alpha;
-		cout << "R:" << R << endl;
+		cout << "R in estimate " << R << endl;
 		float R_2 = R/2;
 		for (int x=0; x<end_point_car.x; x+=10){
 			float y;
-			if (R>0){
-				y=-(R/2)+sqrt(pow((R/2),2)-pow(x,2));
-			}else{
-				y=-(R/2)-sqrt(pow((R/2),2)-pow(x,2));
+			y = sqrt(pow(R,2)-pow(x,2)) - abs(R);
+			if (R>0){	// Right turn
+				// y=-(R/2)+sqrt(pow((R/2),2)-pow(x,2));
+				y = -y;
+			}else{		// Left turn
+				// y=-(R/2)-sqrt(pow((R/2),2)-pow(x,2));
+				
 			}
 			trajectory.insert(trajectory.end(), Point(x,y));
 			cout << "x: " << x << " y: " << y << endl;
@@ -110,7 +89,7 @@ std::vector<cv::Point> estimateTrajectory(std::vector<cv::Point> left, std::vect
 	}else{
 		for (int x=0; x<end_point_car.x; x+=10){
 			trajectory.insert(trajectory.end(), Point(x,0));
-			cout << "x: " << x << " y: " << 0 << endl;
+			// cout << "x: " << x << " y: " << 0 << endl;
 		}
 	}
 	trajectory.insert(trajectory.end(), end_point_car);
@@ -190,20 +169,23 @@ void mockups(int setNum, bool show_image){
 	cout <<"End point car coordinates: " << trajectory_car_cs[numPoints-1].x << " " << trajectory_car_cs[numPoints-1].y << endl;
 	
 	// // // calculated in car space
-	float Od2 = sqrt(pow(trajectory_car_cs[numPoints-1].x, 2) + pow(trajectory_car_cs[numPoints-1].y, 2))/2; //distance from endpoint
+	// // OD/2 = [([last_x^2+last_y^2])^1/2]/2
+	float Od2 = sqrt(pow(trajectory_car_cs[numPoints-1].x, 2) + pow(trajectory_car_cs[numPoints-1].y, 2))/2; // hlaf the distance from endpoint
+	// // sin(alpha) = (last_y/2)/(OD/2)
 	float sin_alpha = (trajectory_car_cs[trajectory_car_cs.size()-1].y/2)/Od2;
 	if(sin_alpha!= 0){
 		float R = Od2/sin_alpha;
+		cout << "R in mockup " << R << endl;
 		cv::Point ICC = Point(0, R);
-		cv:Point ICC_img_cs = car2imgCoordinate(ICC);
+		cv::Point ICC_img_cs = car2imgCoordinate(ICC);
 		circle(image, ICC_img_cs, abs(R), Scalar(150, 150, 0), 4, LINE_8);
 	}else{
-		line(image, trajectory_img_cs[0], trajectory_img_cs[numPoints-1],Scalar(70, 70, 0), 2);
+		line(image, trajectory_img_cs[0], trajectory_img_cs[numPoints-1],Scalar(150,150, 0), 2);
 	}
 
-	// show the trajectory calculated
+	// // show the trajectory calculated
 	for(int i=0; i<numPoints; i++){
-		circle(image, trajectory_img_cs[i], 3, Scalar(255,255,0), -1, LINE_8);
+		circle(image, trajectory_img_cs[i], 3, Scalar(255,0,255), -1, LINE_8);
 	}
 
 	string file_name = "mockup_";

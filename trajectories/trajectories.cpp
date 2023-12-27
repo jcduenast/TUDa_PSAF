@@ -14,11 +14,13 @@
 using namespace cv;
 using namespace std;
 
-std::vector<cv::Point> estimateTrajectory(std::vector<cv::Point> left, std::vector<cv::Point> center, std::vector<cv::Point> right);
+std::vector<cv::Point> purePursuit(std::vector<cv::Point> left, std::vector<cv::Point> center, std::vector<cv::Point> right);
 void mockups(int setNum, bool show_image);
+std::vector<std::vector<cv::Point>> get_mockup(int mockup_id);
 void sharpLeft(bool show_image);
 void drawLane(cv::Mat img, std::vector<cv::Point> Lane, cv::Scalar color, int thickness);
 void drawLaneFromCarCS(cv::Mat img, std::vector<cv::Point> Lane, cv::Scalar color, int thickness);
+cv::Mat drawTrajectories();
 cv::Mat baseImage();
 cv::Point img2carCoordinate(cv::Point imgPoint);
 cv::Point car2imgCoordinate(cv::Point carSpacePoint);
@@ -33,15 +35,56 @@ int car_width = 200;
 int car_height = 350;
 
 int main(int argc, char** argv ) {
-	// sharpLeft(true);
+	std::vector<std::vector<cv::Point>> mockupLines;
+	cv::Mat img;
 	for (int i=0; i<8; i++){
-		mockups(i, true);
+		mockupLines = get_mockup(i);
+		img = drawTrajectories(mockupLines);
+		cv::imshow("Mockup", img);
+		waitKey(0);
 	}
     return 0;
 }
 
+cv::Mat drawTrajectories(std::vector<std::vector<cv::Point>> input){
+	Mat image = baseImage();
+	std::vector rightLine = input[2];
+	std::vector centerLine = input[1];
+	std::vector leftLine = input[0];
 
-std::vector<cv::Point> estimateTrajectory(std::vector<cv::Point> left, std::vector<cv::Point> center, std::vector<cv::Point> right){
+	drawLane(image, rightLine, Scalar(0,255,0), 2);
+	drawLane(image, centerLine, Scalar(0,180,180), 1);
+	drawLane(image, leftLine, Scalar(0,0,255), 2);
+
+	std::vector<cv::Point> trajectory_car_cs = purePursuit(leftLine, centerLine, rightLine);	     // trajectory in car coordinates
+	std::vector<cv::Point> trajectory_img_cs = car2imgCoordinateVector(trajectory_car_cs);				 // trajectory in image coordinates
+	circle(image, trajectory_img_cs[trajectory_img_cs.size()-1], 7, Scalar(70, 180, 0), FILLED, LINE_8); // end-point
+	line(image, trajectory_img_cs[trajectory_img_cs.size()-1], trajectory_img_cs[0],Scalar(70, 70, 0), 2); // line from current position to end point
+	int numPoints = trajectory_car_cs.size();
+
+	
+	// // // calculated in car space
+	// // OD/2 = [([last_x^2+last_y^2])^1/2]/2
+	float Od2 = sqrt(pow(trajectory_car_cs[numPoints-1].x, 2) + pow(trajectory_car_cs[numPoints-1].y, 2))/2; // hlaf the distance from endpoint
+	// // sin(alpha) = (last_y/2)/(OD/2)
+	float sin_alpha = (trajectory_car_cs[trajectory_car_cs.size()-1].y/2)/Od2;
+	if(sin_alpha!= 0){
+		float R = Od2/sin_alpha;
+		// cout << "R in mockup " << R << endl;
+		cv::Point ICC = Point(0, R);
+		cv::Point ICC_img_cs = car2imgCoordinate(ICC);
+		circle(image, ICC_img_cs, abs(R), Scalar(150, 150, 0), 4, LINE_8);
+	}else{
+		line(image, trajectory_img_cs[0], trajectory_img_cs[numPoints-1],Scalar(150,150, 0), 2);
+	}
+
+	// // show the trajectory calculated
+	for(int i=0; i<numPoints; i++){
+		circle(image, trajectory_img_cs[i], 3, Scalar(255,0,255), -1, LINE_8);
+	}
+}
+
+std::vector<cv::Point> purePursuit(std::vector<cv::Point> left, std::vector<cv::Point> center, std::vector<cv::Point> right){
 	std::vector<cv::Point> trajectory;
 	std::vector<cv::Point> right_car = img2carCoordinateVector(right);
 	std::vector<cv::Point> center_car = img2carCoordinateVector(center);
@@ -99,6 +142,58 @@ std::vector<cv::Point> estimateTrajectory(std::vector<cv::Point> left, std::vect
 	return trajectory;
 }
 
+std::vector<std::vector<cv::Point>> get_mockup(int setNum){
+	std::vector<cv::Point> leftLane;
+	std::vector<cv::Point> centerLane;
+	std::vector<cv::Point> rightLane;
+	std::vector<std::vector<cv::Point>> output;
+
+	switch (setNum){
+		case 0:
+			leftLane = {Point(185,0), Point(203,130), Point(224,252), Point(217,391)};
+			centerLane = {Point(356,0), Point(394,130), Point(426,290), Point(441,477)};
+			rightLane = {};
+			break;
+		case 1:
+			leftLane = {Point(0,362), Point(141,399), Point(370,414), Point(463,396)};
+			centerLane = {Point(75,134), Point(165,161), Point(277,172), Point(378,167)};
+			rightLane = {};
+			break;
+		case 2:
+			leftLane = {};
+			centerLane = {Point(46,81), Point(96,188), Point(121,346), Point(120,466)};
+			rightLane = {Point(248,4), Point(310,138), Point(347,266), Point(361,389), Point(367,577)};
+			break;
+		case 3:
+			leftLane = {Point(4,163), Point(90,272), Point(154,339), Point(377,502), Point(467,544)};
+			centerLane = {Point(171,9), Point(245,106), Point(310,172), Point(402,237), Point(471,269)};
+			rightLane = {Point(431,-1), Point(470,31)};
+			break;
+		case 4:
+			leftLane = {Point(181,5), Point(91,79), Point(-1,117)};
+			centerLane = {Point(383,3), Point(374,40), Point(338,19), Point(295,168), Point(226,227), Point(159,270), Point(67,312), Point(-3,329)};
+			rightLane = {Point(470,261), Point(405,334), Point(320,420), Point(163,509), Point(9,560)};
+			break;
+		case 5:
+			leftLane = {Point(33,19), Point(4,131)};
+			centerLane = {Point(221,89), Point(202,168), Point(166,242), Point(133,323), Point(91,421), Point(45,517)};
+			rightLane = {Point(435,6), Point(407,191), Point(379,314), Point(340,453)};
+			break;
+		case 6:
+			leftLane = {Point(9,197), Point(103,301), Point(161,398), Point(211,630)};
+			centerLane = {Point(163,42), Point(222,106), Point(290,174), Point(345,248), Point(395,344), Point(431,442), Point(450,558), Point(458,631)};
+			rightLane = {Point(412,1), Point(468,62)};
+			break;
+		default:
+			leftLane = {};
+			centerLane = {};
+			rightLane = {};
+			break;
+	}
+	
+	output = {leftLane, centerLane, rightLane};
+	return output;
+}
 
 void mockups(int setNum, bool show_image){
 	std::vector<cv::Point> leftLane;
@@ -160,7 +255,7 @@ void mockups(int setNum, bool show_image){
 	// drawLane(image, img_CS_lane, Scalar(255,0,255), 2);
 
 	cout << endl <<"Mockup #" << setNum << endl;
-	std::vector<cv::Point> trajectory_car_cs = estimateTrajectory(leftLane, centerLane, rightLane);	     // trajectory in car coordinates
+	std::vector<cv::Point> trajectory_car_cs = purePursuit(leftLane, centerLane, rightLane);	     // trajectory in car coordinates
 	std::vector<cv::Point> trajectory_img_cs = car2imgCoordinateVector(trajectory_car_cs);				 // trajectory in image coordinates
 	circle(image, trajectory_img_cs[trajectory_img_cs.size()-1], 7, Scalar(70, 180, 0), FILLED, LINE_8); // end-point
 	line(image, trajectory_img_cs[trajectory_img_cs.size()-1], trajectory_img_cs[0],Scalar(70, 70, 0), 2); // line from current position to end point
@@ -209,7 +304,7 @@ void sharpLeft(bool show_image){
 	drawLane(image, centerLane, Scalar(0,180,180), 1);
 	drawLane(image, leftLane, Scalar(0,0,255), 2);
 
-	std::vector<cv::Point> trajectory = estimateTrajectory(leftLane, centerLane, rightLane);
+	std::vector<cv::Point> trajectory = purePursuit(leftLane, centerLane, rightLane);
 	circle(image, trajectory[0], 7, Scalar(70, 180, 0), FILLED, LINE_8);
 	
 	imwrite("sharpLeft.png", image);

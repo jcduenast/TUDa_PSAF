@@ -1,0 +1,3 @@
+/home/ubi/TUDa_PSAF/opencv_tut/CMakeFiles/run.dir
+/home/ubi/TUDa_PSAF/opencv_tut/CMakeFiles/edit_cache.dir
+/home/ubi/TUDa_PSAF/opencv_tut/CMakeFiles/rebuild_cache.dir

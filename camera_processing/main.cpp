@@ -15,6 +15,8 @@
 #include <sstream>
 #include <iomanip>
 
+#include <opencv2/ximgproc.hpp>
+
 #include "main.hpp"
 
 // using namespace cv;
@@ -70,11 +72,13 @@ std::vector<std::vector<cv::Point>> proc_proposal(cv::Mat camera_raw_color){
     color_eagle_std = get_eagle_view(camera_raw_color, mode);
     color_eagle_plt = get_eagle_view(camera_raw_color, mode);
 
-    cv::imshow("Algo input", binary_eagle);
-
-    // std Hough
-    cv::Mat canny_dst;
+    cv::Mat canny_dst, thinned;
     cv::Canny(binary_eagle, canny_dst, 50, 200, 3);
+    
+    
+    cv::Mat algo_input = canny_dst.clone();
+    cv::imshow("Algo input", algo_input);
+    // std Hough
     std::vector<cv::Vec2f> std_lines;
     cv::HoughLines(canny_dst, std_lines, 1, CV_PI/180, 150, 0, 0);
     // draw std hough lines
@@ -87,7 +91,7 @@ std::vector<std::vector<cv::Point>> proc_proposal(cv::Mat camera_raw_color){
         pt1.y = cvRound(y0 + 1000*(a));
         pt2.x = cvRound(x0 - 1000*(-b));
         pt2.y = cvRound(y0 - 1000*(a));
-        cv::line(color_eagle_std, pt1, pt2, cv::Scalar(0,0,255), cv::LINE_AA);
+        cv::line(color_eagle_std, pt1, pt2, cv::Scalar(0,0,255), 1, cv::LINE_AA);
     }
 
     // probabilistic line transform plt
@@ -96,7 +100,7 @@ std::vector<std::vector<cv::Point>> proc_proposal(cv::Mat camera_raw_color){
     // draw plt lines
     for(size_t i=0; i<plt_lines.size(); i++){
         cv::Vec4i l = plt_lines[i];
-        cv::line(color_eagle_plt, cv::Point(l[0],l[1]), cv::Point(l[2],l[3]),cv::Scalar(0,255,0),3,cv::LINE_AA);
+        cv::line(color_eagle_plt, cv::Point(l[0],l[1]), cv::Point(l[2],l[3]), cv::Scalar(0,255,0), 1, cv::LINE_AA);
     }
 
     cv::imshow("Std hough", color_eagle_std);

@@ -364,4 +364,31 @@ CMakeFiles/camera_processing.dir/main.cpp.o: \
  /usr/local/include/opencv4/opencv2/video.hpp \
  /usr/local/include/opencv4/opencv2/video/tracking.hpp \
  /usr/local/include/opencv4/opencv2/video/background_segm.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/edge_filter.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/disparity_filter.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/sparse_match_interpolator.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/structured_edge_detection.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/edgeboxes.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/edge_drawing.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/scansegment.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/seeds.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/segmentation.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/fast_hough_transform.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/estimated_covariance.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/weighted_median_filter.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/slic.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/lsc.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/paillou_filter.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/fast_line_detector.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/deriche_filter.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/peilin.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/fourier_descriptors.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/ridgefilter.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/brightedges.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/run_length_morphology.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/edgepreserving_filter.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/color_match.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/radon_transform.hpp \
+ /usr/local/include/opencv4/opencv2/ximgproc/find_ellipses.hpp \
  /home/ubi/TUDa_PSAF/camera_processing/main.hpp

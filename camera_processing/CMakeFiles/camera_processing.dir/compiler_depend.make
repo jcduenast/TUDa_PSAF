@@ -425,8 +425,63 @@ CMakeFiles/camera_processing.dir/main.cpp.o: main.cpp \
   /usr/local/include/opencv4/opencv2/video.hpp \
   /usr/local/include/opencv4/opencv2/video/tracking.hpp \
   /usr/local/include/opencv4/opencv2/video/background_segm.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/edge_filter.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/disparity_filter.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/sparse_match_interpolator.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/structured_edge_detection.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/edgeboxes.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/edge_drawing.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/scansegment.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/seeds.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/segmentation.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/fast_hough_transform.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/estimated_covariance.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/weighted_median_filter.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/slic.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/lsc.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/paillou_filter.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/fast_line_detector.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/deriche_filter.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/peilin.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/fourier_descriptors.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/ridgefilter.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/brightedges.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/run_length_morphology.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/edgepreserving_filter.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/color_match.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/radon_transform.hpp \
+  /usr/local/include/opencv4/opencv2/ximgproc/find_ellipses.hpp \
   main.hpp
 
+
+/usr/local/include/opencv4/opencv2/ximgproc/run_length_morphology.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc/deriche_filter.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc/fast_line_detector.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc/slic.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc/fast_hough_transform.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc/estimated_covariance.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc/segmentation.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc/seeds.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc/edgeboxes.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc/structured_edge_detection.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc/sparse_match_interpolator.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc/disparity_filter.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc/edge_filter.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc.hpp:
 
 /usr/local/include/opencv4/opencv2/video/tracking.hpp:
 
@@ -456,7 +511,11 @@ CMakeFiles/camera_processing.dir/main.cpp.o: main.cpp \
 
 /usr/local/include/opencv4/opencv2/objdetect/face.hpp:
 
+/usr/local/include/opencv4/opencv2/ximgproc/lsc.hpp:
+
 /usr/local/include/opencv4/opencv2/objdetect/detection_based_tracker.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc/edgepreserving_filter.hpp:
 
 /usr/local/include/opencv4/opencv2/objdetect/aruco_board.hpp:
 
@@ -486,6 +545,8 @@ CMakeFiles/camera_processing.dir/main.cpp.o: main.cpp \
 
 main.hpp:
 
+/usr/local/include/opencv4/opencv2/ximgproc/fourier_descriptors.hpp:
+
 /usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/time_members.h:
@@ -507,6 +568,8 @@ main.hpp:
 /usr/local/include/opencv4/opencv2/flann/allocator.h:
 
 /usr/local/include/opencv4/opencv2/flann/heap.h:
+
+/usr/local/include/opencv4/opencv2/ximgproc/paillou_filter.hpp:
 
 /usr/local/include/opencv4/opencv2/objdetect/barcode.hpp:
 
@@ -530,6 +593,8 @@ main.hpp:
 
 /usr/local/include/opencv4/opencv2/flann.hpp:
 
+/usr/local/include/opencv4/opencv2/ximgproc/find_ellipses.hpp:
+
 /usr/local/include/opencv4/opencv2/flann/random.h:
 
 /usr/local/include/opencv4/opencv2/dnn/utils/inference_engine.hpp:
@@ -543,6 +608,8 @@ main.hpp:
 /usr/local/include/opencv4/opencv2/video.hpp:
 
 /usr/include/c++/11/bits/stl_multimap.h:
+
+/usr/local/include/opencv4/opencv2/ximgproc/ridgefilter.hpp:
 
 /usr/include/c++/11/bits/stl_map.h:
 
@@ -587,6 +654,10 @@ main.hpp:
 /usr/include/c++/11/bits/parse_numbers.h:
 
 /usr/include/c++/11/ctime:
+
+/usr/local/include/opencv4/opencv2/ximgproc/radon_transform.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc/color_match.hpp:
 
 /usr/include/c++/11/ratio:
 
@@ -824,6 +895,10 @@ main.cpp:
 
 /usr/include/c++/11/bits/stl_function.h:
 
+/usr/local/include/opencv4/opencv2/ximgproc/peilin.hpp:
+
+/usr/local/include/opencv4/opencv2/ximgproc/weighted_median_filter.hpp:
+
 /usr/local/include/opencv4/opencv2/core/fast_math.hpp:
 
 /usr/include/c++/11/tr1/gamma.tcc:
@@ -831,6 +906,8 @@ main.cpp:
 /usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
 
 /usr/include/x86_64-linux-gnu/bits/time64.h:
+
+/usr/local/include/opencv4/opencv2/ximgproc/scansegment.hpp:
 
 /usr/include/c++/11/ext/type_traits.h:
 
@@ -863,6 +940,8 @@ main.cpp:
 /usr/include/c++/11/bits/char_traits.h:
 
 /usr/include/asm-generic/errno-base.h:
+
+/usr/local/include/opencv4/opencv2/ximgproc/edge_drawing.hpp:
 
 /usr/include/linux/errno.h:
 
@@ -1133,6 +1212,8 @@ main.cpp:
 /usr/local/include/opencv4/opencv2/core/cvdef.h:
 
 /usr/include/c++/11/limits:
+
+/usr/local/include/opencv4/opencv2/ximgproc/brightedges.hpp:
 
 /usr/local/include/opencv4/opencv2/core/affine.hpp:
 

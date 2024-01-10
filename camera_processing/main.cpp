@@ -17,6 +17,9 @@
 
 #include <opencv2/ximgproc.hpp>
 
+// for blobs
+#include <opencv2/features2d.hpp>
+
 #include "main.hpp"
 
 // using namespace cv;
@@ -37,6 +40,7 @@ int main (){
     // setup_test();
     // compare_record_w_own();
     test_algo(2, 7);
+    // cv::SimpleBlobDetector detector;
     return 0;
 }
 
@@ -132,14 +136,29 @@ std::vector<std::vector<cv::Point>> proc_proposal(cv::Mat camera_raw_color){
 
 
 
-    cv::imshow("Input for Canny and thinning", binary_eagle);
+    // cv::imshow("Input for Canny and thinning", binary_eagle);
     cv::imshow("Output thinning", thinning_dst);
-    cv::imshow("Input for Canny and thinning with closing", binary_closed);
+    // cv::imshow("Input for Canny and thinning with closing", binary_closed);
     // cv::imshow("Algo input, canny", algo_input);
     // cv::imshow("Algo thinned input", algo_input_thinned);
-    cv::imshow("Binary Std Hough (red) plt (green)", color_binary_output);
-    cv::imshow("Canny Std Hough (red) plt (green)", color_canny_output);
+    // cv::imshow("Binary Std Hough (red) plt (green)", color_binary_output);
+    // cv::imshow("Canny Std Hough (red) plt (green)", color_canny_output);
     cv::imshow("Thinned Std Hough (red) plt (green)", color_thinning_output);
+
+    // ----- blob detection ---------------------------------
+    
+    // cv::SimpleBlobDetector::Params blob_params; // <--- todvía no lo estoy usando
+    cv::SimpleBlobDetector* detector = cv::SimpleBlobDetector::create();
+    std::vector<cv::KeyPoint> keypoints;
+    cv::Mat blobs;
+
+    // detector->empty();
+    detector->detect(binary, keypoints);     // <---- me tira un error de "segmentation fault"
+
+    cv::drawKeypoints(binary, keypoints, blobs, cv::Scalar(0,0,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    cv::imshow("Blobs", blobs);
+
+    //----- todo está en estas líneas de la 148 a esta (161) y no funciona :(
 
     cv::waitKey(0);
     return lines;

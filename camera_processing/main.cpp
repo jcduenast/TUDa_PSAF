@@ -5,9 +5,9 @@
 #include <cmath>
   
 // Library to include for 
-// drawing shapes 
+// drawing shapes
 #include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc.hpp>
+#include <opencv2/imgproc.hpp>      // contours
 #include <stdio.h>
 #include <opencv2/opencv.hpp>
 
@@ -24,6 +24,8 @@
 
 // using namespace cv;
 // using namespace std;
+
+cv::RNG rng(12345);
 
 void setup_test();
 void compare_record_w_own();
@@ -111,14 +113,14 @@ std::vector<std::vector<cv::Point>> proc_proposal(cv::Mat camera_raw_color){
     // drawHoughStd(color_canny_output, std_canny_lines, cv::Scalar(0,0,255),1);
 
     // with Zhang Suen thinning: ---------------------------------------------------------------------------------
-    cv::Mat color_thinning_output = cv::Mat().zeros(cv::Size(color_eagle.cols, color_eagle.rows), CV_8UC3); //color_eagle.clone();
-    cv::Mat thinning_dst;
-    cv::ximgproc::thinning(binary_eagle, thinning_dst);
+    // cv::Mat color_thinning_output = cv::Mat().zeros(cv::Size(color_eagle.cols, color_eagle.rows), CV_8UC3); //color_eagle.clone();
+    // cv::Mat thinning_dst;
+    // cv::ximgproc::thinning(binary_eagle, thinning_dst);
     
-    std::vector<cv::Vec4i> plt_thinning_lines;
-    // cv::HoughLinesP(thinning_dst, plt_thinning_lines, 1, CV_PI/180, 50, 10, 10);
-    cv::HoughLinesP(thinning_dst, plt_thinning_lines, 1, CV_PI/180, 10, 50, 10);
-    drawHoughPlt(color_thinning_output, plt_thinning_lines, cv::Scalar(0,255,0), 2);
+    // std::vector<cv::Vec4i> plt_thinning_lines;
+    // // cv::HoughLinesP(thinning_dst, plt_thinning_lines, 1, CV_PI/180, 50, 10, 10);
+    // cv::HoughLinesP(thinning_dst, plt_thinning_lines, 1, CV_PI/180, 10, 50, 10);
+    // drawHoughPlt(color_thinning_output, plt_thinning_lines, cv::Scalar(0,255,0), 2);
     // // std Hough
     // std::vector<cv::Vec2f> std_thinning_lines;
     // cv::HoughLines(thinning_dst, std_thinning_lines, 1, CV_PI/180, 150, 0, 0);
@@ -137,28 +139,58 @@ std::vector<std::vector<cv::Point>> proc_proposal(cv::Mat camera_raw_color){
 
 
     // cv::imshow("Input for Canny and thinning", binary_eagle);
-    cv::imshow("Output thinning", thinning_dst);
+    // cv::imshow("Output thinning", thinning_dst);
     // cv::imshow("Input for Canny and thinning with closing", binary_closed);
-    // cv::imshow("Algo input, canny", algo_input);
+    cv::imshow("Algo input, canny", binary_eagle);
     // cv::imshow("Algo thinned input", algo_input_thinned);
     // cv::imshow("Binary Std Hough (red) plt (green)", color_binary_output);
     // cv::imshow("Canny Std Hough (red) plt (green)", color_canny_output);
-    cv::imshow("Thinned Std Hough (red) plt (green)", color_thinning_output);
+    // cv::imshow("Thinned Std Hough (red) plt (green)", color_thinning_output);
 
     // ----- blob detection ---------------------------------
     
     // cv::SimpleBlobDetector::Params blob_params; // <--- todvía no lo estoy usando
-    cv::SimpleBlobDetector* detector = cv::SimpleBlobDetector::create();
+    cv::SimpleBlobDetector* detector;
+    detector->create();
     std::vector<cv::KeyPoint> keypoints;
     cv::Mat blobs;
 
-    // detector->empty();
-    detector->detect(binary, keypoints);     // <---- me tira un error de "segmentation fault"
+    cv::Mat test = cv::Mat().ones(cv::Size(color_eagle.cols, color_eagle.rows), CV_8UC3); //color_eagle.clone();
 
-    cv::drawKeypoints(binary, keypoints, blobs, cv::Scalar(0,0,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-    cv::imshow("Blobs", blobs);
+    // detector->empty();
+    // detector->detect(test, keypoints);     // <---- me tira un error de "segmentation fault"
+
+    // cv::drawKeypoints(binary, keypoints, blobs, cv::Scalar(0,0,255), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    // cv::imshow("Blobs", blobs);
 
     //----- todo está en estas líneas de la 148 a esta (161) y no funciona :(
+
+    // forget blobs, it's all about contours! -----------------------------------
+
+    std::vector<std::vector<cv::Point>> contours;
+    std::vector<cv::Vec4i> hierarchy;
+    cv::findContours(binary_eagle, contours, hierarchy, cv::RETR_LIST, cv::CHAIN_APPROX_NONE);
+
+    cv::Mat contour_rectangles = cv::Mat().zeros(binary_eagle.size(), CV_8UC3);
+    
+
+    for (int i=0; i<contours.size(); i++){
+        cv::drawContours(contour_rectangles, contours, i, cv::Scalar(0,255,0), cv::FILLED, cv::LINE_8);
+        cv::rectangle(contour_rectangles, contours[i].front(), contours[i].back(), cv::Scalar(255,0,0), 1, cv::LINE_8);
+        std::cout << "P1: " << contours[i].front().x << " " << contours[i].front().y ;
+        std::cout << " P2: " << contours[i].back().x << " " << contours[i].back().y << std::endl;
+    }
+    cv::imshow("Contours with rectangle", contour_rectangles);
+
+    for (int i=0; i<contours.size(); i++){
+        std::cout << "Nivel: " << i << " with " << contours[i].size() << " points" << std::endl;
+        std::string window_name = "contour #" + std::to_string(i);;
+        cv::Mat drawing = cv::Mat().zeros(binary_eagle.size(), CV_8UC3);
+        // cv::drawContours(drawing, contours, i, cv::Scalar(0,255,0), cv::FILLED, cv::LINE_8, hierarchy, 0 );
+        cv::drawContours(drawing, contours, i, cv::Scalar(0,255,0), cv::FILLED, cv::LINE_8);
+        // cv::imshow(window_name, drawing);
+    }
+    std::cout << "End --------------" << std::endl;
 
     cv::waitKey(0);
     return lines;

@@ -168,31 +168,114 @@ std::vector<std::vector<cv::Point>> proc_proposal(cv::Mat camera_raw_color){
     // forget blobs, it's all about contours! -----------------------------------
 
     std::vector<std::vector<cv::Point>> contours;
-    std::vector<cv::Vec4i> hierarchy;
-    cv::findContours(binary_eagle, contours, hierarchy, cv::RETR_LIST, cv::CHAIN_APPROX_NONE);
+    // std::vector<cv::Vec4i> hierarchy;
+    // cv::findContours(binary_eagle, contours, hierarchy, cv::RETR_LIST, cv::CHAIN_APPROX_NONE);
+    cv::findContours(binary_eagle, contours, cv::RETR_LIST, cv::CHAIN_APPROX_NONE);
 
-    cv::Mat contour_rectangles = cv::Mat().zeros(binary_eagle.size(), CV_8UC3);
-    
-
-    for (int i=0; i<contours.size(); i++){
-        cv::drawContours(contour_rectangles, contours, i, cv::Scalar(0,255,0), cv::FILLED, cv::LINE_8);
-        cv::rectangle(contour_rectangles, contours[i].front(), contours[i].back(), cv::Scalar(255,0,0), 1, cv::LINE_8);
-        std::cout << "P1: " << contours[i].front().x << " " << contours[i].front().y ;
-        std::cout << " P2: " << contours[i].back().x << " " << contours[i].back().y << std::endl;
+    std::vector<int> usefullCont;
+    std::vector<int> uselessCont;
+    for (int i=0; i<contours.size();i++){
+        if (contours[i].size()>100){
+            usefullCont.insert(usefullCont.end(), i);
+        }else{
+            uselessCont.insert(uselessCont.end(), i);
+        }
     }
+
+    std::vector<cv::Moments> mu(usefullCont.size());
+    for (int i=0; i<usefullCont.size(); i++) mu[i] = cv::moments(contours[usefullCont[i]]);
+
+    int largestCnt = -1;     // usefull index
+    int scndLargestCnt = -1; // usefull index
+    int largestCntArea = 0;
+    int scndLargestCntArea = 0;
+
+    for (int i=0; i<usefullCont.size(); i++){
+        // std::cout << "looking for bigger than " << largestCntArea << " trying " << contours[usefullCont[i]].size() << std::endl; 
+        if (contours[usefullCont[i]].size() > largestCntArea){
+            // std::cout << "Found a larger one" << std::endl;
+            if (largestCnt == -1){
+                largestCnt = i;
+                largestCntArea = contours[usefullCont[i]].size();
+            }else{
+                scndLargestCnt = largestCnt;
+                scndLargestCntArea = largestCntArea;
+                largestCnt = i;
+                largestCntArea = contours[usefullCont[i]].size();
+            }
+        }
+    }
+    std::cout << "largest cnt " << largestCnt << std::endl;
+
+    // trying to draw the bounding rectangles
+    cv::Mat contour_rectangles = cv::Mat().zeros(binary_eagle.size(), CV_8UC3);
+    for (int i=0; i<uselessCont.size(); i++) cv::drawContours(contour_rectangles, contours, uselessCont[i], cv::Scalar(0,0,180), cv::FILLED, cv::LINE_8);
+    std::vector<cv::Rect> boundRect(usefullCont.size());
+    for (int i=0; i<usefullCont.size(); i++){
+        boundRect[i] = cv::boundingRect(contours[usefullCont[i]]);
+        cv::drawContours(contour_rectangles, contours, usefullCont[i], cv::Scalar(0,180,0), cv::FILLED, cv::LINE_8);
+        cv::rectangle(contour_rectangles, boundRect[i].tl(), boundRect[i].br(), cv::Scalar(255,255,255), 1, cv::LINE_8);
+        std::cout << "Contour #" << i << " with " << contours[usefullCont[i]].size() << " points" << std::endl;
+        // std::cout << "P1: " << boundRect[i].tl().x << " " << boundRect[i].tl().y ;
+        // std::cout << " P2: " << boundRect[i].br().x << " " << boundRect[i].br().y << std::endl;
+    }
+
+    std::vector<std::string> cntTags(usefullCont.size());
+    for (int i=0; i<usefullCont.size(); i++){
+        if(contours[usefullCont[i]].size()<350){
+            cntTags[i] = "center";
+        }else if (contours[usefullCont[i]].size()>500){
+            if (i == largestCnt){           // we'll know on which lane we're going
+                std::cout << "Checking largest contour" << std::endl;
+                if (scndLargestCnt != -1){  // there is a line to compare to
+                    if (boundRect[i].tl().x < boundRect[scndLargestCnt].tl().x){    // comparing top left coordinate (the x or horizontal component)
+                        cntTags[i] = "left";
+                    }else{
+                        cntTags[i] = "right";
+                    }
+                }else{                      // there is nothing to compare to, let's try then
+                    if(boundRect[i].tl().x < binary_eagle.size().width/2){
+                        cntTags[i] = "left";
+                    }else{
+                        cntTags[i] = "right";
+                    }
+                }
+                if (cntTags[i] == "left"){
+                    cv::putText(contour_rectangles, "Riding on left lane", cv::Point(50, 600), 
+                                    cv::FONT_HERSHEY_COMPLEX_SMALL , 0.8, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+                }else if (cntTags[i] == "right"){
+                    cv::putText(contour_rectangles, "Riding on right lane", cv::Point(50, 600), 
+                                cv::FONT_HERSHEY_COMPLEX_SMALL , 0.8, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+
+                }
+            } else if (i == scndLargestCnt){
+                if (boundRect[i].tl().x < boundRect[largestCnt].tl().x){    // comparing top left coordinate (the x or horizontal component)
+                    cntTags[i] = "left";
+                }else{
+                    cntTags[i] = "right";
+                }
+            }
+        }
+    }
+
+    for (int i=0; i<usefullCont.size(); i++){
+        cv::putText(contour_rectangles, cntTags[i], cv::Point(boundRect[i].tl().x, boundRect[i].br().y+15), 
+                    cv::FONT_HERSHEY_COMPLEX_SMALL , 0.8, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+    }
+
     cv::imshow("Contours with rectangle", contour_rectangles);
 
-    for (int i=0; i<contours.size(); i++){
-        std::cout << "Nivel: " << i << " with " << contours[i].size() << " points" << std::endl;
-        std::string window_name = "contour #" + std::to_string(i);;
-        cv::Mat drawing = cv::Mat().zeros(binary_eagle.size(), CV_8UC3);
-        // cv::drawContours(drawing, contours, i, cv::Scalar(0,255,0), cv::FILLED, cv::LINE_8, hierarchy, 0 );
-        cv::drawContours(drawing, contours, i, cv::Scalar(0,255,0), cv::FILLED, cv::LINE_8);
-        // cv::imshow(window_name, drawing);
-    }
+    // for (int i=0; i<contours.size(); i++){
+    //     std::cout << "Contour #" << i << " with " << contours[i].size() << " points" << std::endl;
+    //     std::string window_name = "Contour #" + std::to_string(i);;
+    //     cv::Mat drawing = cv::Mat().zeros(binary_eagle.size(), CV_8UC3);
+    //     // cv::drawContours(drawing, contours, i, cv::Scalar(0,255,0), cv::FILLED, cv::LINE_8, hierarchy, 0 );
+    //     cv::drawContours(drawing, contours, i, cv::Scalar(0,255,0), cv::FILLED, cv::LINE_8);
+    //     // cv::imshow(window_name, drawing);
+    // }
     std::cout << "End --------------" << std::endl;
 
-    cv::waitKey(0);
+    cv::waitKey(100);
     return lines;
 }
 

@@ -72,7 +72,7 @@ void lineClasification(cv::Mat raw_color_camera){
     cv::Mat result = cv::Mat().zeros(binary_eagle.size(), CV_8UC3);     // where the result of the algorithm will be visualized
 
     // Draw all contours in red, will be overwritten when classified
-    for (int i=0; i<cntAll.size(); i++) cv::drawContours(result, cntAll, i, cv::Scalar(0,0,180), cv::FILLED, cv::LINE_8);
+    for (int i=0; i<cntAll.size(); i++) cv::drawContours(result, cntAll, i, cv::Scalar(100,100,100), cv::FILLED, cv::LINE_8);
 
     for (int i=0; i<cntAll.size(); i++){       // delete small contours
         if (cntAll[i].size() > 100) cnt.insert(cnt.begin(), cntAll[i]);
@@ -153,7 +153,7 @@ void lineClasification(cv::Mat raw_color_camera){
     std::vector<int> centerCandidateIndex;
     for (int i=0; i<cnt.size(); i++){
         // std::cout << "Lines indexes: left " << std::to_string(leftLineIndex) << " right " << std::to_string(rightLineIndex) << std::endl;
-        if (i == leftLineIndex || i == rightLineIndex){
+        if (i == leftLineIndex || i == rightLineIndex){     // Do nothing, this loop is for the center lines
             // std::cout << "Cnt " << std::to_string(i) << " with " << std::to_string(cnt[i].size()) << " points was skipped.  skipped. Index of largest cnt: ";
             // std::cout << std::to_string(indexLargestCnt) << std::endl;
         }else{
@@ -182,6 +182,7 @@ void lineClasification(cv::Mat raw_color_camera){
                     }
                 }
                 centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
+                centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
                 cv::putText(result, "->", cv::Point(boundRect[i].tl().x-20, boundRect[i].br().y+25), 
                             cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
             }
@@ -196,7 +197,7 @@ void lineClasification(cv::Mat raw_color_camera){
     centerVar /= centerCandidateIndex.size();   // var check
     double centerStd = std::sqrt(centerVar);    // std check
 
-    // drawing the statistical filter -- does not seems to be that succesfull :(
+    // drawing the statistical filter -------- does not seems to be that succesfull :(
     // int statLine_top = 0, statLine_bottom = 700, lineWidth = 1;     // Testing
     int statLine_top = 600, statLine_bottom = 640, lineWidth = 2;     // Runtime
     cv::line(result, cv::Point(centerMean,statLine_top), cv::Point(centerMean,statLine_bottom), cv::Scalar(0,180,0), 2);
@@ -205,64 +206,26 @@ void lineClasification(cv::Mat raw_color_camera){
     cv::line(result, cv::Point(centerMean+2*centerStd,statLine_top+10), cv::Point(centerMean+2*centerStd,statLine_bottom-10), cv::Scalar(0,0,255), lineWidth);
     cv::line(result, cv::Point(centerMean-2*centerStd,statLine_top+10), cv::Point(centerMean-2*centerStd,statLine_bottom-10), cv::Scalar(0,0,255), lineWidth);
 
+    for (int i=0; i<leftLineRegion.size(); i++){       // Drawing contours of the left line
+        cv::drawContours(result, leftLineRegion, i, cv::Scalar(0,255,0), cv::FILLED, cv::LINE_8);
+    }
+    for (int i=0; i<rightLineRegion.size(); i++){       // Drawing contours of the right line
+        cv::drawContours(result, rightLineRegion, i, cv::Scalar(0,0,255), cv::FILLED, cv::LINE_8);
+    }
+    for (int i=0; i<centerLinesRegion.size(); i++){       // Drawing contours of the center lines
+        cv::drawContours(result, centerLinesRegion, i, cv::Scalar(255,255,0), cv::FILLED, cv::LINE_8);
+    }
 
-
-
-
-
-    for (int i=0; i<cnt.size(); i++){
-        // Drawing
-        cv::drawContours(result, cnt, i, cv::Scalar(0,180,0), cv::FILLED, cv::LINE_8);
+    for (int i=0; i<cnt.size(); i++){       // Drawing contours and rectangles
+        // cv::drawContours(result, cnt, i, cv::Scalar(0,180,0), cv::FILLED, cv::LINE_8);
         cv::rectangle(result, boundRect[i].tl(), boundRect[i].br(), cv::Scalar(255,255,255), 1, cv::LINE_8);
         boundMinArea[i].points(rotatedRectPoints_aux);
         for (int j=0; j<4; j++) cv::line(result, rotatedRectPoints_aux[j], rotatedRectPoints_aux[(j+1)%4], cv::Scalar(150,150,0));
         // cv::ellipse(result, minEllipse[i], cv::Scalar(0,180,180));
     }
 
-    // Assigning tags to each cnt to see how the processing behaves
-    // std::vector<std::string> cntTags(cnt.size());
-    // for (int i=0; i<cnt.size(); i++){
-    //     if(cnt[i].size()<350){
-    //         cntTags[i] = "c "+ std::to_string(boundRect[i].size().width) + " " + std::to_string(boundRect[i].size().height);
-    //     }else if (cnt[i].size()>500){
-    //         if (i == indexLargestCnt){           // we'll know on which lane we're going
-    //             if (index2ndLargestCnt != -1){  // there is a line to compare to
-    //                 if (boundRect[i].tl().x < boundRect[index2ndLargestCnt].tl().x){    // comparing top left coordinate (the x or horizontal component)
-    //                     cntTags[i] = "left";
-    //                 }else{
-    //                     cntTags[i] = "right";
-    //                 }
-    //             }else{                      // there is nothing to compare to, let's try then
-    //                 if(boundRect[i].tl().x < binary_eagle.size().width/2){
-    //                     cntTags[i] = "left";
-    //                 }else{
-    //                     cntTags[i] = "right";
-    //                 }
-    //             }
-    //             if (cntTags[i] == "left"){
-    //                 cv::putText(result, "Riding on left lane", cv::Point(50, 600), 
-    //                                 cv::FONT_HERSHEY_COMPLEX_SMALL , 0.8, CV_RGB(255,255,255), 1, cv::LINE_8, false);
-    //             }else if (cntTags[i] == "right"){
-    //                 cv::putText(result, "Riding on right lane", cv::Point(50, 600), 
-    //                             cv::FONT_HERSHEY_COMPLEX_SMALL , 0.8, CV_RGB(255,255,255), 1, cv::LINE_8, false);
-    //             }
-    //         } else if (i == index2ndLargestCnt){
-    //             if (boundRect[i].tl().x < boundRect[indexLargestCnt].tl().x){    // comparing top left coordinate (the x or horizontal component)
-    //                 cntTags[i] = "left";
-    //             }else{
-    //                 cntTags[i] = "right";
-    //             }
-    //         }
-    //     }
-    // }
-
-    // for (int i=0; i<cnt.size(); i++){
-    //     cv::putText(result, cntTags[i], cv::Point(boundRect[i].tl().x, boundRect[i].br().y+15), 
-    //                 cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
-    // }
-
     cv::imshow("Clasification logic", result);
-    cv::waitKey(0);
+    cv::waitKey(100);
     std::cout << std::endl;
     return;
 }

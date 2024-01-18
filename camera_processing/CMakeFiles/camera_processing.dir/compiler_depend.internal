@@ -3,7 +3,6 @@
 
 CMakeFiles/camera_processing.dir/main.cpp.o
  /home/ubi/TUDa_PSAF/camera_processing/main.cpp
- /home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/main.cpp
  /usr/include/stdc-predef.h
  /usr/include/c++/11/iostream
  /usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h
@@ -454,5 +453,5 @@ CMakeFiles/camera_processing.dir/main.cpp.o
  /usr/local/include/opencv4/opencv2/ximgproc/color_match.hpp
  /usr/local/include/opencv4/opencv2/ximgproc/radon_transform.hpp
  /usr/local/include/opencv4/opencv2/ximgproc/find_ellipses.hpp
- /home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/main.hpp
+ /home/ubi/TUDa_PSAF/camera_processing/main.hpp
 

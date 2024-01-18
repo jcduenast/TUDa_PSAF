@@ -103,11 +103,14 @@ void lineClasification(cv::Mat raw_color_camera){
     std::vector<cv::RotatedRect> boundMinArea(cnt.size());
     cv::Point2f rotatedRectPoints_aux[4];
     std::vector<cv::RotatedRect> minEllipse(cnt.size());    // vamos a comparar la relación entre los ejes mayor y menor [didn't yet]
+    std::vector<cv::Vec4f> lineCnt(cnt.size());
 
     for (int i=0; i<cnt.size(); i++){
         boundRect[i] = cv::boundingRect(cnt[i]);
         boundMinArea[i] = cv::minAreaRect(cnt[i]);
         minEllipse[i] = cv::fitEllipse(cnt[i]);
+        cv::fitLine(cnt[i], lineCnt[i], cv::DIST_L1, 0, 0.01, 0.01);
+        // cv::fitLine(cnt[i], lineCnt[i], cv::DIST_L2, 0, 0.01, 0.01);        // L2 distance, more computationally expensive
     }
 
     // Find info about the largest line ------------------------------------------------------------------------------------------
@@ -224,12 +227,14 @@ void lineClasification(cv::Mat raw_color_camera){
         cv::drawContours(result, centerLinesRegion, i, cv::Scalar(255,255,0), cv::FILLED, cv::LINE_8);
     }
 
-    for (int i=0; i<cnt.size(); i++){       // Drawing contours and rectangles
+    // Drawing contours and rectangles -----------------------------------------------------------------------
+    for (int i=0; i<cnt.size(); i++){       
         // cv::drawContours(result, cnt, i, cv::Scalar(0,180,0), cv::FILLED, cv::LINE_8);
         cv::rectangle(result, boundRect[i].tl(), boundRect[i].br(), cv::Scalar(255,255,255), 1, cv::LINE_8);
         boundMinArea[i].points(rotatedRectPoints_aux);
         for (int j=0; j<4; j++) cv::line(result, rotatedRectPoints_aux[j], rotatedRectPoints_aux[(j+1)%4], cv::Scalar(150,150,0));
         // cv::ellipse(result, minEllipse[i], cv::Scalar(0,180,180));
+        cv::line(result, cv::Point(lineCnt[i][2], lineCnt[i][3]), cv::Point(lineCnt[i][2]+lineCnt[i][0]*1000, lineCnt[i][3]+lineCnt[i][1]*1000), cv::Scalar(0,150,255), 4);
         if (i == leftLineIndex || i == rightLineIndex){
             boundMinArea[i].points(rotatedRectPoints_aux);
             minDst = std::min(cv::norm(rotatedRectPoints_aux[0]-rotatedRectPoints_aux[1]), cv::norm(rotatedRectPoints_aux[1]-rotatedRectPoints_aux[2]));

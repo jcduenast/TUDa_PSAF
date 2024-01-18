@@ -1,3 +1,0 @@
-/home/ubi/TUDa_PSAF/camera_processing/CMakeFiles/camera_processing.dir
-/home/ubi/TUDa_PSAF/camera_processing/CMakeFiles/edit_cache.dir
-/home/ubi/TUDa_PSAF/camera_processing/CMakeFiles/rebuild_cache.dir

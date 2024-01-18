@@ -132,14 +132,15 @@ void lineClasification(cv::Mat raw_color_camera){
                 leftLineIndex = index2ndLargestCnt;
             }   // Usemos la información de las líneas centrales para asignar la otra línea
         }else{                          // There is no second line
-            if (boundRect[indexLargestCnt].x < binary_eagle.size().width/2){
+            boundMinArea[indexLargestCnt].points(rotatedRectPoints_aux);
+            if( rotatedRectPoints_aux[3].x < binary_eagle.size().width/2){  //Using the bottom-right coordinates point of the minimumRectangleArea to classify them
                 leftLineRegion.insert(leftLineRegion.begin(), cnt[indexLargestCnt]);
                 leftLineIndex = indexLargestCnt;
-                std::cout << std::to_string(boundRect[indexLargestCnt].x) << " < " << std::to_string(binary_eagle.size().width/2) << std::endl;
+                std::cout << std::to_string(rotatedRectPoints_aux[3].x) << " < " << std::to_string(binary_eagle.size().width/2) << std::endl;
             }else{
                 rightLineRegion.insert(rightLineRegion.begin(), cnt[indexLargestCnt]);
                 rightLineIndex = indexLargestCnt;
-                std::cout << std::to_string(boundRect[indexLargestCnt].x) << " > " << std::to_string(binary_eagle.size().width/2) << std::endl;
+                std::cout << std::to_string(rotatedRectPoints_aux[3].x) << " > " << std::to_string(binary_eagle.size().width/2) << std::endl;
             }
         }
     }else{

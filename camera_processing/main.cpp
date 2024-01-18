@@ -236,7 +236,7 @@ void test_algo(int mode, int set){
     std::stringstream ss;
     ss << std::setw(2) << std::setfill('0') << set;
     std::string run_id_string = ss.str();
-    root_path = "/home/ubi/usb/run" + run_id_string + "/";
+    root_path = "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/test/";///home/ubi/usb/run" + run_id_string + "/";
 
     for(;; frame++){
         cam_img_name = root_path + "raw_img_" + std::to_string(frame) + ".jpg";        // hasta la 2 está con png, de ahí en adelante con .jpg
@@ -247,7 +247,7 @@ void test_algo(int mode, int set){
         // own_processed = inf_processing(og_img, mode);                                   // imagen raw a color procesada por los infos
         // own_processed_overlay = final_on_og(own_processed, eagle_view_color);
         // cv::imshow("Own processing overlayed on color", own_processed_overlay);
-        // cv::waitKey(0);
+        cv::waitKey(0);
     }
     return;
 }

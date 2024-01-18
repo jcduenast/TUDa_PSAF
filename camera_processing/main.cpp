@@ -234,8 +234,10 @@ void lineClasification(cv::Mat raw_color_camera){
             boundMinArea[i].points(rotatedRectPoints_aux);
             minDst = std::min(cv::norm(rotatedRectPoints_aux[0]-rotatedRectPoints_aux[1]), cv::norm(rotatedRectPoints_aux[1]-rotatedRectPoints_aux[2]));
             maxDst = std::max(cv::norm(rotatedRectPoints_aux[0]-rotatedRectPoints_aux[1]), cv::norm(rotatedRectPoints_aux[1]-rotatedRectPoints_aux[2]));
-            cv::putText(result, std::to_string(minDst) + " " + std::to_string(maxDst) + " " + std::to_string(maxDst/minDst), 
-                        cv::Point(boundRect[i].tl().x-15, boundRect[i].br().y+15), cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+            cv::putText(result, std::to_string(boundMinArea[i].angle), cv::Point(boundRect[i].tl().x-15, boundRect[i].br().y+15),
+                            cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+            // cv::putText(result, std::to_string(minDst) + " " + std::to_string(maxDst) + " " + std::to_string(maxDst/minDst), 
+            //             cv::Point(boundRect[i].tl().x-15, boundRect[i].br().y+15), cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
         }
     }
 
@@ -255,7 +257,7 @@ void test_algo(int mode, int set){
     std::string run_id_string = ss.str();
     root_path = "/home/ubi/usb/run" + run_id_string + "/";
     // root_path = "/home/ubi/TUDa_PSAF/camera_processing/test/"; // path for camilo
-    // root_path = "/home/ubi/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/test/"; // path for Daniel
+    // root_path = "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/test/"; // path for Daniel
 
     for(;; frame++){
         std::cout << "Frame: " << std::to_string(frame) << std::endl;

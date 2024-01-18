@@ -8,7 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/home/ubi/TUDa_PSAF/camera_processing/main.cpp" "CMakeFiles/camera_processing.dir/main.cpp.o" "gcc" "CMakeFiles/camera_processing.dir/main.cpp.o.d"
+  "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/main.cpp" "CMakeFiles/camera_processing.dir/main.cpp.o" "gcc" "CMakeFiles/camera_processing.dir/main.cpp.o.d"
   )
 
 # Targets to which this target links.

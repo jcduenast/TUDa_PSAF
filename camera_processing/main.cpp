@@ -42,13 +42,13 @@ void drawHoughPlt(cv::Mat canvas, std::vector<cv::Vec4i> plt_lines, cv::Scalar c
 int main (){
     // setup_test();
     // compare_record_w_own();
-    test_algo(2, 7);
+    test_algo(2,7);
     // cv::SimpleBlobDetector detector;
     return 0;
 }
 
 void lineClasification(cv::Mat raw_color_camera){
-    // binary eagle perspective
+    // binary eagle perspective ----------------------------------------------------------
     cv::Mat gray, blurred, binary, binary_eagle;
     cv::cvtColor(raw_color_camera, gray, cv::COLOR_BGR2GRAY);
     cv::GaussianBlur(gray, blurred, cv::Size(9, 9), 0, 0, cv::BORDER_DEFAULT);
@@ -64,27 +64,26 @@ void lineClasification(cv::Mat raw_color_camera){
     int leftLineIndex;
     int rightLineIndex;
 
-    // Contour detection
+    // Contour detection --------------------------------------------------------------
     std::vector<std::vector<cv::Point>> cnt;        // Here will be the ones bigger than 100px
     std::vector<std::vector<cv::Point>> cntAll;     // Here all the contours will be stored for the first clasification
     cv::findContours(binary_eagle, cntAll, cv::RETR_LIST, cv::CHAIN_APPROX_NONE);
 
     cv::Mat result = cv::Mat().zeros(binary_eagle.size(), CV_8UC3);     // where the result of the algorithm will be visualized
 
-    // Draw all contours in red, will be overwritten when classified
+    // Draw all contours in grey, will be overwritten when classified
     for (int i=0; i<cntAll.size(); i++) cv::drawContours(result, cntAll, i, cv::Scalar(100,100,100), cv::FILLED, cv::LINE_8);
 
-    for (int i=0; i<cntAll.size(); i++){       // delete small contours
-        if (cntAll[i].size() > 100) cnt.insert(cnt.begin(), cntAll[i]);
-    }
+    // delete small contours -------------------------------------------------------------
+    for (int i=0; i<cntAll.size(); i++)     if (cntAll[i].size() > 100) cnt.insert(cnt.begin(), cntAll[i]);
 
+    // finding the contour (cnt) with the largest area to tag them as either left or right lines --------------------------------------
     int indexLargestCnt = -1, index2ndLargestCnt = -1;
-    int areaLargestCnt = 600, area2ndLargestCnt = 600;        // Side lines should be at least 500 big, normally arround +900
+    int areaLargestCnt = 600, area2ndLargestCnt = 600;        // Side lines should be at least 600 big, normally arround +900
 
-    // finding the contour (cnt) with the largest area to tag them as either left or right lines
     for (int i=0; i<cnt.size(); i++){
-        std::cout << "checking cnt " << std::to_string(i) << " with " << std::to_string(cnt[i].size()) << " Largest area: " << std::to_string(areaLargestCnt);
-        std::cout <<" 2nd largest area: " << std::to_string(area2ndLargestCnt) << std::endl;
+        // std::cout << "checking cnt " << std::to_string(i) << " with " << std::to_string(cnt[i].size()) << " Largest area: " << std::to_string(areaLargestCnt);
+        // std::cout <<" 2nd largest area: " << std::to_string(area2ndLargestCnt) << std::endl;
         if (cnt[i].size() > areaLargestCnt){
             if (indexLargestCnt != -1){
                 index2ndLargestCnt = indexLargestCnt;
@@ -98,35 +97,34 @@ void lineClasification(cv::Mat raw_color_camera){
         }
     }
     
+
+    // Finding descriptors ----------------------------------------------------------------------------------------------------
     std::vector<cv::Rect> boundRect(cnt.size());
     std::vector<cv::RotatedRect> boundMinArea(cnt.size());
-    cv::Point2f rotatedRectPoints_aux[4];       // No estoy seguro qué tipo de dato es esto. ¿Un simple array?
-    std::vector<cv::RotatedRect> minEllipse(cnt.size());    // vamos a comparar la relación entre los ejes mayor y menor
+    cv::Point2f rotatedRectPoints_aux[4];
+    std::vector<cv::RotatedRect> minEllipse(cnt.size());    // vamos a comparar la relación entre los ejes mayor y menor [didn't yet]
 
     for (int i=0; i<cnt.size(); i++){
-        // Finding descriptors
         boundRect[i] = cv::boundingRect(cnt[i]);
         boundMinArea[i] = cv::minAreaRect(cnt[i]);
         minEllipse[i] = cv::fitEllipse(cnt[i]);
     }
 
-    // // start of the hollistics 
-    // Find info about the largest line
-    if (indexLargestCnt != -1){         // There is a candidate
-        std::cout << "There IS a largest candidate." << std::endl;
-        if (index2ndLargestCnt != -1){  // There is a 2nd big line
-            std::cout << "Actually, there are two! :D" << std::endl;
-            cv::putText(result, "There are two big groups (line 119)", cv::Point(50, 700), 
-                            cv::FONT_HERSHEY_COMPLEX_SMALL , 3, CV_RGB(255,255,255), 1, cv::LINE_8, false);
-            if (boundRect[indexLargestCnt].x < boundRect[index2ndLargestCnt].x){   // Si el más grande empieza más a la izquierda
-                // Vamos por el carril izquierdo, probablemente
+    // Find info about the largest line ------------------------------------------------------------------------------------------
+    if (indexLargestCnt != -1){                                                     // There is a large contour
+        // std::cout << "There IS a largest candidate." << std::endl;
+        if (index2ndLargestCnt != -1){                                              // There is a 2nd large contour
+            // std::cout << "Actually, there are two! :D" << std::endl;
+            // cv::putText(result, "There are two big groups (line 119)", cv::Point(50, 700), 
+            //                 cv::FONT_HERSHEY_COMPLEX_SMALL , 3, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+            if (boundRect[indexLargestCnt].x < boundRect[index2ndLargestCnt].x){    // Si el más grande empieza más a la izquierda
+                                                                                    // Vamos por el carril izquierdo, probablemente
                 leftLineRegion.insert(leftLineRegion.begin(), cnt[indexLargestCnt]);
                 leftLineIndex = indexLargestCnt;
                 std::cout << std::to_string(boundRect[indexLargestCnt].x) << " < " << boundRect[index2ndLargestCnt].x << std::endl;
                 rightLineRegion.insert(rightLineRegion.begin(), cnt[index2ndLargestCnt]);
                 rightLineIndex = index2ndLargestCnt;
-            }else{
-                // Vamos por el carril derecho, probablemente
+            }else{                                                                  // Vamos por el carril derecho, probablemente
                 rightLineRegion.insert(rightLineRegion.begin(), cnt[indexLargestCnt]);
                 rightLineIndex = indexLargestCnt;
                 std::cout << std::to_string(boundRect[indexLargestCnt].x) << " > " << boundRect[index2ndLargestCnt].x << std::endl;
@@ -145,10 +143,10 @@ void lineClasification(cv::Mat raw_color_camera){
             }
         }
     }else{
-        std::cout << "There is no largest candidate. :(" << std::endl;
+        std::cout << "There is no largest candidate. :(" << std::endl; // haven't happened yet :D
     }
 
-    // // lets find center lines
+    // // lets find center lines -------------------------------------------------------------------------------------------------------------------------
     int minDst, maxDst;
     std::vector<int> centerCandidateIndex;
     for (int i=0; i<cnt.size(); i++){
@@ -167,8 +165,8 @@ void lineClasification(cv::Mat raw_color_camera){
             
             // Check about the width of the minAre bounding box and its relative position
             if (minDst < 25){
-                std::cout << "Left index: " << std::to_string(leftLineIndex) << " " << std::to_string(leftLineRegion.size());
-                std::cout << " Right index: " << std::to_string(rightLineIndex) << " " << std::to_string(rightLineRegion.size()) << std::endl;
+                // std::cout << "Left index: " << std::to_string(leftLineIndex) << " " << std::to_string(leftLineRegion.size());
+                // std::cout << " Right index: " << std::to_string(rightLineIndex) << " " << std::to_string(rightLineRegion.size()) << std::endl;
                 if (leftLineRegion.size() > 0){   // There is already some points there and the index has a valid value
                     if (boundRect[i].x > boundRect[leftLineIndex].x){           // here comparing the left side of the center lines to the left side of the left lines
                         cv::putText(result, "center left reference", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+25), 
@@ -177,7 +175,7 @@ void lineClasification(cv::Mat raw_color_camera){
                 }
                 if (rightLineRegion.size() > 0){   // There is already some points there and the index has a valid value
                     if (boundRect[i].x < boundRect[rightLineIndex].br().x){     // here comparing the left side of the center lines to the right side of the right lines
-                        cv::putText(result, "center right line reference", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+27), 
+                        cv::putText(result, "center right line reference", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+35), 
                             cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
                     }
                 }

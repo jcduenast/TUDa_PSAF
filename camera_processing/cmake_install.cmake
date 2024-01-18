@@ -1,4 +1,4 @@
-# Install script for directory: /home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing
+# Install script for directory: /home/ubi/TUDa_PSAF/camera_processing
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/ubi/TUDa_PSAF/camera_processing/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

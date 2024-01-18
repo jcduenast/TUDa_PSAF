@@ -1,1 +1,6 @@
 .vscode
+Makefile
+camera_processing
+CMakeFiles/
+cmake_install.*
+CMakeCache.txt

@@ -42,7 +42,7 @@ void drawHoughPlt(cv::Mat canvas, std::vector<cv::Vec4i> plt_lines, cv::Scalar c
 int main (){
     // setup_test();
     // compare_record_w_own();
-    test_algo(2,7);
+    test_algo(2,3);
     // cv::SimpleBlobDetector detector;
     return 0;
 }
@@ -109,8 +109,8 @@ void lineClasification(cv::Mat raw_color_camera){
         boundRect[i] = cv::boundingRect(cnt[i]);
         boundMinArea[i] = cv::minAreaRect(cnt[i]);
         minEllipse[i] = cv::fitEllipse(cnt[i]);
-        cv::fitLine(cnt[i], lineCnt[i], cv::DIST_L1, 0, 0.01, 0.01);
-        // cv::fitLine(cnt[i], lineCnt[i], cv::DIST_L2, 0, 0.01, 0.01);        // L2 distance, more computationally expensive
+        // cv::fitLine(cnt[i], lineCnt[i], cv::DIST_L1, 0, 0.01, 0.01);
+        cv::fitLine(cnt[i], lineCnt[i], cv::DIST_L2, 0, 0.01, 0.01);        // L2 distance, more computationally expensive
     }
 
     // Find info about the largest line ------------------------------------------------------------------------------------------
@@ -153,6 +153,15 @@ void lineClasification(cv::Mat raw_color_camera){
     // // lets find center lines -------------------------------------------------------------------------------------------------------------------------
     int minDst, maxDst;
     std::vector<int> centerCandidateIndex;
+    double mLeft, mRight, bLeft, bRight, x_test;        // line description of the left and right lines
+    if (rightLineRegion.size() > 0 && lineCnt[rightLineIndex][0] != 0){
+        mRight = lineCnt[rightLineIndex][1]/lineCnt[rightLineIndex][0];
+        bRight = lineCnt[rightLineIndex][3] - mRight*lineCnt[rightLineIndex][2];
+    }
+    if (leftLineRegion.size() > 0 && lineCnt[leftLineIndex][0] != 0){
+        mLeft = lineCnt[leftLineIndex][1]/lineCnt[leftLineIndex][0];
+        bLeft = lineCnt[leftLineIndex][3] - mLeft*lineCnt[leftLineIndex][2];
+    }
     for (int i=0; i<cnt.size(); i++){
         // std::cout << "Lines indexes: left " << std::to_string(leftLineIndex) << " right " << std::to_string(rightLineIndex) << std::endl;
         if (i == leftLineIndex || i == rightLineIndex){     // Do nothing, this loop is for the center lines
@@ -168,30 +177,85 @@ void lineClasification(cv::Mat raw_color_camera){
                         cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
             
             // Check about the width of the minAre bounding box and its relative position
-            if (minDst < 20 && maxDst < 135){
+            if (minDst < 35 && maxDst < 135){
                 // std::cout << "Left index: " << std::to_string(leftLineIndex) << " " << std::to_string(leftLineRegion.size());
                 // std::cout << " Right index: " << std::to_string(rightLineIndex) << " " << std::to_string(rightLineRegion.size()) << std::endl;
                 if (leftLineRegion.size() > 0 && rightLineRegion.size() == 0){          // There is only a left line
-                    if (boundRect[i].x > boundRect[leftLineIndex].x){                   // here comparing the left side of the center lines to the left side of the left lines
-                        cv::putText(result, "center left reference", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+25), 
-                            cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
-                    centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
-                    centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
+                    if (lineCnt[leftLineIndex][0] != 0){                                // la pendiente no es infinita
+                        x_test = (boundRect[i].y-bLeft)/mLeft;
+                        if (boundRect[i].x > x_test){
+                            cv::putText(result, "center ll", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+25), 
+                                        cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+                            centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
+                            centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
+                        }
+                    }else{  // comparar simplemente con la coordenada en x porque la línea es vertical
+                        if (boundRect[i].x > boundRect[leftLineIndex].tl().x){
+                            cv::putText(result, "center ll", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+25), 
+                                        cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+                            centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
+                            centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
+                        }
                     }
                 } else if (rightLineRegion.size() > 0 && leftLineRegion.size() == 0){   // There is only a right line
-                    if (boundRect[i].x < boundRect[rightLineIndex].br().x){             // here comparing the left side of the center lines to the right side of the right lines
-                        cv::putText(result, "center right line reference", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+25), 
-                            cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
-                        centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
-                        centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
+                    if (lineCnt[rightLineIndex][0] != 0){
+                        x_test = (boundRect[i].y-bRight)/mRight;    //punto sobre la recta derecha para comparar
+                        if (boundRect[i].x < x_test) {
+                            cv::putText(result, "center rl", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+25), 
+                                        cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+                            centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
+                            centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
+                        }
+                    }else{                              // la pendiente es infinita
+                        if (boundRect[i].x < boundRect[rightLineIndex].x){
+                            cv::putText(result, "center rl", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+25), 
+                                        cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+                            centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
+                            centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
+                        }
                     }
-                } else if (leftLineRegion.size() > 0 && rightLineRegion.size() > 0){    // There are teo lines, left and right
-                    if (boundRect[i].x > boundRect[leftLineIndex].x && boundRect[i].x < boundRect[rightLineIndex].br().x){
-                        cv::putText(result, "center both references", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+25), 
-                            cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
-                        centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
-                        centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
+                } else if (leftLineRegion.size() > 0 && rightLineRegion.size() > 0){    // There are two lines, left and right
+                    if (lineCnt[leftLineIndex][0] != 0){                                // la pendiente no es infinita
+                        x_test = (boundRect[i].y-bLeft)/mLeft;
+                        if (boundRect[i].x > x_test){
+                            if (lineCnt[rightLineIndex][0] != 0){
+                                x_test = (boundRect[i].y-bRight)/mRight;    //punto sobre la recta derecha para comparar
+                                if (boundRect[i].x < x_test) {
+                                    cv::putText(result, "center ll rl", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+25), 
+                                                cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+                                    centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
+                                    centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
+                                }
+                            }else{  // la pendiente es infinita
+                                if (boundRect[i].x < boundRect[rightLineIndex].x) {
+                                    cv::putText(result, "center ll rl", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+25), 
+                                                cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+                                    centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
+                                    centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
+                                }
+                            }
+                        }
+                    }else{      // la pendiente es infinita
+                        if (boundRect[i].x > boundRect[leftLineIndex].x){
+                            if (lineCnt[rightLineIndex][0] != 0){           // pendiente no infinita
+                                x_test = (boundRect[i].y-bRight)/mRight;    //punto sobre la recta derecha para comparar
+                                if (boundRect[i].x < x_test) {
+                                    cv::putText(result, "center ll rl", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+25), 
+                                                cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+                                    centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
+                                    centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
+                                }
+                            }else{  // la pendiente es infinita
+                                if (boundRect[i].x < boundRect[rightLineIndex].x) {
+                                    cv::putText(result, "center ll rl", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+25), 
+                                                cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+                                    centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
+                                    centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
+                                }
+                            }
+                        }
                     }
+                    
                 }else{
                     cv::putText(result, "2b inspected", cv::Point(boundRect[i].tl().x-20, boundRect[i].br().y+25), 
                             cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
@@ -200,7 +264,7 @@ void lineClasification(cv::Mat raw_color_camera){
         }
     }
 
-    // with a list of groups filtered by width, the mean and std are calculated to discard even more
+    // Center lines ---------------- with a list of groups filtered by width, the mean and std are calculated to discard even more
     double centerMean = 0, centerVar = 0;
     for (int i=0; i<centerCandidateIndex.size(); i++)   centerMean += boundRect[centerCandidateIndex[i]].x;
     centerMean /= centerCandidateIndex.size();  // mean check
@@ -234,20 +298,10 @@ void lineClasification(cv::Mat raw_color_camera){
         boundMinArea[i].points(rotatedRectPoints_aux);
         for (int j=0; j<4; j++) cv::line(result, rotatedRectPoints_aux[j], rotatedRectPoints_aux[(j+1)%4], cv::Scalar(150,150,0));
         // cv::ellipse(result, minEllipse[i], cv::Scalar(0,180,180));
-        cv::line(result, cv::Point(lineCnt[i][2], lineCnt[i][3]), cv::Point(lineCnt[i][2]+lineCnt[i][0]*1000, lineCnt[i][3]+lineCnt[i][1]*1000), cv::Scalar(0,150,255), 4);
-        if (i == leftLineIndex || i == rightLineIndex){
-            boundMinArea[i].points(rotatedRectPoints_aux);
-            minDst = std::min(cv::norm(rotatedRectPoints_aux[0]-rotatedRectPoints_aux[1]), cv::norm(rotatedRectPoints_aux[1]-rotatedRectPoints_aux[2]));
-            maxDst = std::max(cv::norm(rotatedRectPoints_aux[0]-rotatedRectPoints_aux[1]), cv::norm(rotatedRectPoints_aux[1]-rotatedRectPoints_aux[2]));
-            cv::putText(result, std::to_string(boundMinArea[i].angle), cv::Point(boundRect[i].tl().x-15, boundRect[i].br().y+15),
-                            cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
-            // cv::putText(result, std::to_string(minDst) + " " + std::to_string(maxDst) + " " + std::to_string(maxDst/minDst), 
-            //             cv::Point(boundRect[i].tl().x-15, boundRect[i].br().y+15), cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
-        }
     }
 
     cv::imshow("Clasification logic", result);
-    cv::waitKey(0);
+    cv::waitKey(50);
     // std::cout << std::endl;
     return;
 }

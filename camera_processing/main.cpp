@@ -121,13 +121,13 @@ void lineClasification(cv::Mat raw_color_camera){
                                                                                     // Vamos por el carril izquierdo, probablemente
                 leftLineRegion.insert(leftLineRegion.begin(), cnt[indexLargestCnt]);
                 leftLineIndex = indexLargestCnt;
-                std::cout << std::to_string(boundRect[indexLargestCnt].x) << " < " << boundRect[index2ndLargestCnt].x << std::endl;
+                // std::cout << std::to_string(boundRect[indexLargestCnt].x) << " < " << boundRect[index2ndLargestCnt].x << std::endl;
                 rightLineRegion.insert(rightLineRegion.begin(), cnt[index2ndLargestCnt]);
                 rightLineIndex = index2ndLargestCnt;
             }else{                                                                  // Vamos por el carril derecho, probablemente
                 rightLineRegion.insert(rightLineRegion.begin(), cnt[indexLargestCnt]);
                 rightLineIndex = indexLargestCnt;
-                std::cout << std::to_string(boundRect[indexLargestCnt].x) << " > " << boundRect[index2ndLargestCnt].x << std::endl;
+                // std::cout << std::to_string(boundRect[indexLargestCnt].x) << " > " << boundRect[index2ndLargestCnt].x << std::endl;
                 leftLineRegion.insert(leftLineRegion.begin(), cnt[index2ndLargestCnt]);
                 leftLineIndex = index2ndLargestCnt;
             }   // Usemos la información de las líneas centrales para asignar la otra línea
@@ -161,29 +161,38 @@ void lineClasification(cv::Mat raw_color_camera){
             boundMinArea[i].points(rotatedRectPoints_aux);
             minDst = std::min(cv::norm(rotatedRectPoints_aux[0]-rotatedRectPoints_aux[1]), cv::norm(rotatedRectPoints_aux[1]-rotatedRectPoints_aux[2]));
             maxDst = std::max(cv::norm(rotatedRectPoints_aux[0]-rotatedRectPoints_aux[1]), cv::norm(rotatedRectPoints_aux[1]-rotatedRectPoints_aux[2]));
-            cv::putText(result, std::to_string(minDst) + " " + std::to_string(maxDst/minDst), cv::Point(boundRect[i].tl().x, boundRect[i].br().y+15), 
+            cv::putText(result, std::to_string(minDst) + " " + std::to_string(maxDst), cv::Point(boundRect[i].tl().x-15, boundRect[i].br().y+15), 
                         cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
             
             // Check about the width of the minAre bounding box and its relative position
-            if (minDst < 25){
+            if (minDst < 20 && maxDst < 135){
                 // std::cout << "Left index: " << std::to_string(leftLineIndex) << " " << std::to_string(leftLineRegion.size());
                 // std::cout << " Right index: " << std::to_string(rightLineIndex) << " " << std::to_string(rightLineRegion.size()) << std::endl;
-                if (leftLineRegion.size() > 0){   // There is already some points there and the index has a valid value
-                    if (boundRect[i].x > boundRect[leftLineIndex].x){           // here comparing the left side of the center lines to the left side of the left lines
+                if (leftLineRegion.size() > 0 && rightLineRegion.size() == 0){          // There is only a left line
+                    if (boundRect[i].x > boundRect[leftLineIndex].x){                   // here comparing the left side of the center lines to the left side of the left lines
                         cv::putText(result, "center left reference", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+25), 
                             cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+                    centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
+                    centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
                     }
-                }
-                if (rightLineRegion.size() > 0){   // There is already some points there and the index has a valid value
-                    if (boundRect[i].x < boundRect[rightLineIndex].br().x){     // here comparing the left side of the center lines to the right side of the right lines
-                        cv::putText(result, "center right line reference", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+35), 
+                } else if (rightLineRegion.size() > 0 && leftLineRegion.size() == 0){   // There is only a right line
+                    if (boundRect[i].x < boundRect[rightLineIndex].br().x){             // here comparing the left side of the center lines to the right side of the right lines
+                        cv::putText(result, "center right line reference", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+25), 
                             cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+                        centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
+                        centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
                     }
-                }
-                centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
-                centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
-                cv::putText(result, "->", cv::Point(boundRect[i].tl().x-20, boundRect[i].br().y+25), 
+                } else if (leftLineRegion.size() > 0 && rightLineRegion.size() > 0){    // There are teo lines, left and right
+                    if (boundRect[i].x > boundRect[leftLineIndex].x && boundRect[i].x < boundRect[rightLineIndex].br().x){
+                        cv::putText(result, "center both references", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+25), 
                             cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+                        centerCandidateIndex.insert(centerCandidateIndex.begin(), i);
+                        centerLinesRegion.insert(centerLinesRegion.begin(), cnt[i]);
+                    }
+                }else{
+                    cv::putText(result, "2b inspected", cv::Point(boundRect[i].tl().x-20, boundRect[i].br().y+25), 
+                            cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+                }
             }
         }
     }
@@ -221,11 +230,18 @@ void lineClasification(cv::Mat raw_color_camera){
         boundMinArea[i].points(rotatedRectPoints_aux);
         for (int j=0; j<4; j++) cv::line(result, rotatedRectPoints_aux[j], rotatedRectPoints_aux[(j+1)%4], cv::Scalar(150,150,0));
         // cv::ellipse(result, minEllipse[i], cv::Scalar(0,180,180));
+        if (i == leftLineIndex || i == rightLineIndex){
+            boundMinArea[i].points(rotatedRectPoints_aux);
+            minDst = std::min(cv::norm(rotatedRectPoints_aux[0]-rotatedRectPoints_aux[1]), cv::norm(rotatedRectPoints_aux[1]-rotatedRectPoints_aux[2]));
+            maxDst = std::max(cv::norm(rotatedRectPoints_aux[0]-rotatedRectPoints_aux[1]), cv::norm(rotatedRectPoints_aux[1]-rotatedRectPoints_aux[2]));
+            cv::putText(result, std::to_string(minDst) + " " + std::to_string(maxDst) + " " + std::to_string(maxDst/minDst), 
+                        cv::Point(boundRect[i].tl().x-15, boundRect[i].br().y+15), cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+        }
     }
 
     cv::imshow("Clasification logic", result);
-    cv::waitKey(100);
-    std::cout << std::endl;
+    cv::waitKey(0);
+    // std::cout << std::endl;
     return;
 }
 
@@ -237,9 +253,12 @@ void test_algo(int mode, int set){
     std::stringstream ss;
     ss << std::setw(2) << std::setfill('0') << set;
     std::string run_id_string = ss.str();
-    root_path = "/home/ubi/TUDa_PSAF/camera_processing/test/";///home/ubi/usb/run" + run_id_string + "/";
+    root_path = "/home/ubi/usb/run" + run_id_string + "/";
+    // root_path = "/home/ubi/TUDa_PSAF/camera_processing/test/"; // path for camilo
+    // root_path = "/home/ubi/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/test/"; // path for Daniel
 
     for(;; frame++){
+        std::cout << "Frame: " << std::to_string(frame) << std::endl;
         cam_img_name = root_path + "raw_img_" + std::to_string(frame) + ".jpg";        // hasta la 2 está con png, de ahí en adelante con .jpg
         og_img = cv::imread(cam_img_name);                                              // cargar la imagen de la camara a color
         // proc_proposal(og_img);
@@ -248,7 +267,7 @@ void test_algo(int mode, int set){
         // own_processed = inf_processing(og_img, mode);                                   // imagen raw a color procesada por los infos
         // own_processed_overlay = final_on_og(own_processed, eagle_view_color);
         // cv::imshow("Own processing overlayed on color", own_processed_overlay);
-        cv::waitKey(0);
+        // cv::waitKey(0);
     }
     return;
 }

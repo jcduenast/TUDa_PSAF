@@ -38,6 +38,9 @@ void lineClasification(cv::Mat raw_color_camera);
 void test_algo(int mode, int set);
 void drawHoughStd(cv::Mat canvas, std::vector<cv::Vec2f> std_lines, cv::Scalar color, int thickness);
 void drawHoughPlt(cv::Mat canvas, std::vector<cv::Vec4i> plt_lines, cv::Scalar color, int thickness);
+int max(int num1, int num2);
+int min(int num1, int num2);
+std::vector<std::vector<cv::Point>> getPoints(cv::Mat segmentedImage);
 
 int main (){
     // setup_test();
@@ -217,14 +220,23 @@ void lineClasification(cv::Mat raw_color_camera){
     cv::line(result, cv::Point(centerMean+2*centerStd,statLine_top+10), cv::Point(centerMean+2*centerStd,statLine_bottom-10), cv::Scalar(0,0,255), lineWidth);
     cv::line(result, cv::Point(centerMean-2*centerStd,statLine_top+10), cv::Point(centerMean-2*centerStd,statLine_bottom-10), cv::Scalar(0,0,255), lineWidth);
 
+    cv::Mat leftLineImage = cv::Mat().zeros(binary_eagle.size(), CV_8UC1); 
+    cv::Mat rightLineImage = cv::Mat().zeros(binary_eagle.size(), CV_8UC1); 
+    cv::Mat centerLineImage = cv::Mat().zeros(binary_eagle.size(), CV_8UC1); 
+
+
     for (int i=0; i<leftLineRegion.size(); i++){       // Drawing contours of the left line
         cv::drawContours(result, leftLineRegion, i, cv::Scalar(0,255,0), cv::FILLED, cv::LINE_8);
+        cv::drawContours(leftLineImage, leftLineRegion, i, cv::Scalar(255), cv::FILLED, cv::LINE_8);
+
     }
     for (int i=0; i<rightLineRegion.size(); i++){       // Drawing contours of the right line
         cv::drawContours(result, rightLineRegion, i, cv::Scalar(0,0,255), cv::FILLED, cv::LINE_8);
+        cv::drawContours(rightLineImage, rightLineRegion, i, cv::Scalar(255), cv::FILLED, cv::LINE_8);
     }
     for (int i=0; i<centerLinesRegion.size(); i++){       // Drawing contours of the center lines
         cv::drawContours(result, centerLinesRegion, i, cv::Scalar(255,255,0), cv::FILLED, cv::LINE_8);
+        cv::drawContours(centerLineImage, centerLinesRegion, i, cv::Scalar(255), cv::FILLED, cv::LINE_8);
     }
 
     // Drawing contours and rectangles -----------------------------------------------------------------------
@@ -245,11 +257,92 @@ void lineClasification(cv::Mat raw_color_camera){
             //             cv::Point(boundRect[i].tl().x-15, boundRect[i].br().y+15), cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
         }
     }
-
     cv::imshow("Clasification logic", result);
+    //cv::imshow("Left", leftLineImage);
+    //cv::imshow("Right", rightLineImage);
+    cv::imshow("Center", centerLineImage);
+
+    getPoints(centerLineImage);
+
     cv::waitKey(0);
     // std::cout << std::endl;
     return;
+}
+
+std::vector<std::vector<cv::Point>> getPoints(cv::Mat segmentedImage){
+    
+    std::vector<std::vector<cv::Point>> lines;  // output
+    std::vector<cv::Vec4i> plt_binary_lines;
+
+    cv::Mat houghOutput = segmentedImage.clone();
+    cv::HoughLinesP(segmentedImage, plt_binary_lines, 1, CV_PI/180, 50, 50, 10);
+    drawHoughPlt(houghOutput, plt_binary_lines, cv::Scalar(0,255,0), 2);
+
+    // with Zhang Suen thinning: ---------------------------------------------------------------------------------
+    cv::Mat color_thinning_output = cv::Mat().zeros(cv::Size(segmentedImage.cols, segmentedImage.rows), CV_8UC3); //color_eagle.clone();
+    cv::Mat thinning_dst;
+    cv::ximgproc::thinning(segmentedImage, thinning_dst);
+    
+    std::vector<cv::Vec4i> plt_thinning_lines;
+    cv::HoughLinesP(thinning_dst, plt_thinning_lines, 1, CV_PI/180, 10, 30, 5);
+    //cv::HoughLinesP(segmentedImage, plt_thinning_lines, 1, CV_PI/180, 10, 50, 5);
+    drawHoughPlt(color_thinning_output, plt_thinning_lines, cv::Scalar(0,255,0), 2);
+        
+    int count = plt_thinning_lines.size();
+    std::vector<cv::Vec4i> out_lines;
+    std::vector<int> mass;
+    int tolerance = 30;
+    for (size_t i = 0; i < count; i++)
+    {
+        bool similar = false;
+        int count_out = out_lines.size();
+
+        cv::Vec4i aux = plt_thinning_lines.at(i);
+
+        for (size_t j = 0; (j < count_out) && (!similar); j++)
+        {
+            //Is it similar?
+            cv::Vec4i center = out_lines.at(j);
+            int mass_center = mass.at(j);
+            if(aux[0] < (center[0] + tolerance) && aux[0] > (center[0] - tolerance) && 
+            aux[1] < (center[1] + tolerance) && aux[1] > (center[1] - tolerance) &&
+            aux[2] < (center[2] + tolerance) && aux[2] > (center[2] - tolerance) &&
+            aux[3] < (center[3] + tolerance) && aux[3] > (center[3] - tolerance)
+            ){
+                //out_lines.at(j) = (center*mass_center + aux)/(mass_center + 1);
+
+                cv::Vec4i adefesio = cv::Vec4i(min(aux[0],center[0]),min(aux[1],center[1]),max(aux[2],center[2]),max(aux[3],center[3]));
+                out_lines.at(j) = adefesio;
+                mass.at(j) = mass_center + 1;
+                similar = true;
+            }
+            std::cout<<"Vectores: "<<center<<" y "<<aux<<" son similares "<<similar<<"\n";
+        }
+
+        if(!similar){
+            out_lines.push_back(aux);
+            mass.push_back(1);
+        }
+    }
+    
+    std::cout<<"OUTPUT LINES: ";
+    for(size_t i=0; i<out_lines.size(); i++){
+        cv::Vec4i l = out_lines[i];
+        std::cout<<l<<"\n";
+    }
+
+
+    cv::Mat cluster_output = cv::Mat().zeros(cv::Size(segmentedImage.cols, segmentedImage.rows), CV_8UC3); //color_eagle.clone();
+    
+    drawHoughPlt(cluster_output, out_lines, cv::Scalar(0,255,255), 2);
+
+    //cv::imshow("Output thinning", thinning_dst);
+    cv::imshow("Thinned Std Hough (red) plt (green)", color_thinning_output);
+    cv::imshow("Clusterized output", cluster_output);
+
+    std::cout << "End --------------" << std::endl;
+
+    return lines;
 }
 
 void test_algo(int mode, int set){
@@ -262,7 +355,7 @@ void test_algo(int mode, int set){
     std::string run_id_string = ss.str();
     root_path = "/home/ubi/usb/run" + run_id_string + "/";
     // root_path = "/home/ubi/TUDa_PSAF/camera_processing/test/"; // path for camilo
-    // root_path = "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/test/"; // path for Daniel
+    root_path = "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/test/"; // path for Daniel
 
     for(;; frame++){
         std::cout << "Frame: " << std::to_string(frame) << std::endl;
@@ -676,4 +769,18 @@ void drawHoughPlt(cv::Mat canvas, std::vector<cv::Vec4i> plt_lines, cv::Scalar c
         cv::Vec4i l = plt_lines[i];
         cv::line(canvas, cv::Point(l[0],l[1]), cv::Point(l[2],l[3]), color, thickness, cv::LINE_AA);
     }
+}
+
+int min(int num1, int num2){
+    if(num1 < num2){
+        return num1;
+    }
+    return num2;
+}
+
+int max(int num1, int num2){
+    if(num1 > num2){
+        return num1;
+    }
+    return num2;
 }

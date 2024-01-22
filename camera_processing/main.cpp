@@ -42,7 +42,7 @@ void drawHoughPlt(cv::Mat canvas, std::vector<cv::Vec4i> plt_lines, cv::Scalar c
 int main (){
     // setup_test();
     // compare_record_w_own();
-    test_algo(2,3);
+    test_algo(2,7);
     // cv::SimpleBlobDetector detector;
     return 0;
 }
@@ -104,6 +104,13 @@ void lineClasification(cv::Mat raw_color_camera){
     cv::Point2f rotatedRectPoints_aux[4];
     std::vector<cv::RotatedRect> minEllipse(cnt.size());    // vamos a comparar la relación entre los ejes mayor y menor [didn't yet]
     std::vector<cv::Vec4f> lineCnt(cnt.size());
+    std::vector<cv::Moments> mu(cnt.size());
+    std::vector<double[7]> huMo(cnt.size());
+    
+    for (int i=0; i<cnt.size(); i++){
+        mu[i] = cv::moments(cnt[i]);
+        cv::HuMoments(mu[i], huMo[i]);
+    }
 
     for (int i=0; i<cnt.size(); i++){
         boundRect[i] = cv::boundingRect(cnt[i]);
@@ -298,10 +305,24 @@ void lineClasification(cv::Mat raw_color_camera){
         boundMinArea[i].points(rotatedRectPoints_aux);
         for (int j=0; j<4; j++) cv::line(result, rotatedRectPoints_aux[j], rotatedRectPoints_aux[(j+1)%4], cv::Scalar(150,150,0));
         // cv::ellipse(result, minEllipse[i], cv::Scalar(0,180,180));
+        if (i==rightLineIndex || i==leftLineIndex){
+        for (int hu=0; hu<7; hu++){
+                cv::putText(result, std::to_string(huMo[i][hu]), cv::Point(boundRect[i].x, boundRect[i].y+15*hu+50),
+                            cv::FONT_HERSHEY_COMPLEX_SMALL , 0.8, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+            }
+            if (huMo[i][0]+huMo[i][1]+huMo[i][2]> 2 && huMo[i][0]+huMo[i][1]+huMo[i][2] <5){
+                if (huMo[i][3]+huMo[i][4]+huMo[i][5] < 3 && huMo[i][3]+huMo[i][4]+huMo[i][5] > 0.3){
+                    cv::putText(result, "PARKING!!!!!!!!", cv::Point(boundRect[i].tl().x, boundRect[i].br().y+30),
+                                cv::FONT_HERSHEY_COMPLEX_SMALL , 0.8, CV_RGB(255,0,255), 1, cv::LINE_8, false);
+
+                }
+            }
+        }
+        
     }
 
     cv::imshow("Clasification logic", result);
-    cv::waitKey(50);
+    cv::waitKey(0);
     // std::cout << std::endl;
     return;
 }

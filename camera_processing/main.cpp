@@ -38,9 +38,8 @@ void lineClasification(cv::Mat raw_color_camera);
 void test_algo(int mode, int set);
 void drawHoughStd(cv::Mat canvas, std::vector<cv::Vec2f> std_lines, cv::Scalar color, int thickness);
 void drawHoughPlt(cv::Mat canvas, std::vector<cv::Vec4i> plt_lines, cv::Scalar color, int thickness);
-int max(int num1, int num2);
-int min(int num1, int num2);
-std::vector<std::vector<cv::Point>> getPoints(cv::Mat segmentedImage);
+void drawPoints(cv::Mat image, std::vector<cv::Point2f> points, cv::Scalar color, int radius);
+std::vector<cv::Point2f> getPoints(cv::Mat segmentedImage);
 
 int main (){
     // setup_test();
@@ -258,91 +257,77 @@ void lineClasification(cv::Mat raw_color_camera){
         }
     }
     cv::imshow("Clasification logic", result);
-    //cv::imshow("Left", leftLineImage);
-    //cv::imshow("Right", rightLineImage);
-    cv::imshow("Center", centerLineImage);
 
-    getPoints(centerLineImage);
+    std::vector<cv::Point2f> centro = getPoints(centerLineImage);
+    std::vector<cv::Point2f> izquierdo = getPoints(leftLineImage);
+    std::vector<cv::Point2f> derecho = getPoints(rightLineImage);
+
+    cv::Mat points_output = cv::Mat().zeros(cv::Size(result.cols, result.rows), CV_8UC3); //color_eagle.clone();
+    
+    drawPoints(points_output, centro, cv::Scalar(0,255,0), 3);
+    drawPoints(points_output, derecho, cv::Scalar(255,0,0), 3);
+    drawPoints(points_output, izquierdo, cv::Scalar(0,0,255), 3);
+
+    cv::imshow("Clasification result", points_output);
 
     cv::waitKey(0);
     // std::cout << std::endl;
     return;
 }
 
-std::vector<std::vector<cv::Point>> getPoints(cv::Mat segmentedImage){
+std::vector<cv::Point2f> getPoints(cv::Mat segmentedImage){
     
-    std::vector<std::vector<cv::Point>> lines;  // output
-    std::vector<cv::Vec4i> plt_binary_lines;
-
-    cv::Mat houghOutput = segmentedImage.clone();
-    cv::HoughLinesP(segmentedImage, plt_binary_lines, 1, CV_PI/180, 50, 50, 10);
-    drawHoughPlt(houghOutput, plt_binary_lines, cv::Scalar(0,255,0), 2);
-
-    // with Zhang Suen thinning: ---------------------------------------------------------------------------------
-    cv::Mat color_thinning_output = cv::Mat().zeros(cv::Size(segmentedImage.cols, segmentedImage.rows), CV_8UC3); //color_eagle.clone();
-    cv::Mat thinning_dst;
-    cv::ximgproc::thinning(segmentedImage, thinning_dst);
-    
-    std::vector<cv::Vec4i> plt_thinning_lines;
-    cv::HoughLinesP(thinning_dst, plt_thinning_lines, 1, CV_PI/180, 10, 30, 5);
-    //cv::HoughLinesP(segmentedImage, plt_thinning_lines, 1, CV_PI/180, 10, 50, 5);
-    drawHoughPlt(color_thinning_output, plt_thinning_lines, cv::Scalar(0,255,0), 2);
+    std::vector<cv::Vec4i> hough_lines = std::vector<cv::Vec4i>();
+    cv::HoughLinesP(segmentedImage, hough_lines, 1, CV_PI/180, 30, 30, 5);
         
-    int count = plt_thinning_lines.size();
-    std::vector<cv::Vec4i> out_lines;
-    std::vector<int> mass;
+    int count = hough_lines.size();
     int tolerance = 30;
+    std::vector<cv::Point2f> outputLines = std::vector<cv::Point2f>();
+    std::vector<int> mass = std::vector<int>();
     for (size_t i = 0; i < count; i++)
     {
         bool similar = false;
-        int count_out = out_lines.size();
-
-        cv::Vec4i aux = plt_thinning_lines.at(i);
-
+        int count_out = outputLines.size();
+        cv::Vec4i aux = hough_lines.at(i);
         for (size_t j = 0; (j < count_out) && (!similar); j++)
         {
             //Is it similar?
-            cv::Vec4i center = out_lines.at(j);
+            cv::Point2f center = outputLines.at(j);
             int mass_center = mass.at(j);
-            if(aux[0] < (center[0] + tolerance) && aux[0] > (center[0] - tolerance) && 
-            aux[1] < (center[1] + tolerance) && aux[1] > (center[1] - tolerance) &&
-            aux[2] < (center[2] + tolerance) && aux[2] > (center[2] - tolerance) &&
-            aux[3] < (center[3] + tolerance) && aux[3] > (center[3] - tolerance)
+            if(aux[0] < (center.x + tolerance) && aux[0] > (center.x - tolerance) && 
+            aux[1] < (center.y + tolerance) && aux[1] > (center.y - tolerance)
             ){
-                //out_lines.at(j) = (center*mass_center + aux)/(mass_center + 1);
-
-                cv::Vec4i adefesio = cv::Vec4i(min(aux[0],center[0]),min(aux[1],center[1]),max(aux[2],center[2]),max(aux[3],center[3]));
-                out_lines.at(j) = adefesio;
+                outputLines.at(j) = (center*mass_center + cv::Point2f(aux[0],aux[1]))/(mass_center + 1);
                 mass.at(j) = mass_center + 1;
                 similar = true;
             }
-            std::cout<<"Vectores: "<<center<<" y "<<aux<<" son similares "<<similar<<"\n";
         }
-
         if(!similar){
-            out_lines.push_back(aux);
+            outputLines.push_back(cv::Point2f(aux[0],aux[1]));
+            mass.push_back(1);
+        }
+        similar = false;
+        count_out = outputLines.size();
+        for (size_t j = 0; (j < count_out) && (!similar); j++)
+        {
+            //Is it similar?
+            cv::Point2f center = outputLines.at(j);
+            int mass_center = mass.at(j);
+            if(aux[2] < (center.x + tolerance) && aux[2] > (center.x - tolerance) && 
+            aux[3] < (center.y + tolerance) && aux[3] > (center.y - tolerance)
+            ){
+                outputLines.at(j) = (center*mass_center + cv::Point2f(aux[2],aux[3]))/(mass_center + 1);
+                mass.at(j) = mass_center + 1;
+                similar = true;
+            }
+        }
+        if(!similar){
+            outputLines.push_back(cv::Point2f(aux[2],aux[3]));
             mass.push_back(1);
         }
     }
-    
-    std::cout<<"OUTPUT LINES: ";
-    for(size_t i=0; i<out_lines.size(); i++){
-        cv::Vec4i l = out_lines[i];
-        std::cout<<l<<"\n";
-    }
 
-
-    cv::Mat cluster_output = cv::Mat().zeros(cv::Size(segmentedImage.cols, segmentedImage.rows), CV_8UC3); //color_eagle.clone();
-    
-    drawHoughPlt(cluster_output, out_lines, cv::Scalar(0,255,255), 2);
-
-    //cv::imshow("Output thinning", thinning_dst);
-    cv::imshow("Thinned Std Hough (red) plt (green)", color_thinning_output);
-    cv::imshow("Clusterized output", cluster_output);
-
-    std::cout << "End --------------" << std::endl;
-
-    return lines;
+    return outputLines;
 }
 
 void test_algo(int mode, int set){
@@ -771,16 +756,10 @@ void drawHoughPlt(cv::Mat canvas, std::vector<cv::Vec4i> plt_lines, cv::Scalar c
     }
 }
 
-int min(int num1, int num2){
-    if(num1 < num2){
-        return num1;
+void drawPoints(cv::Mat image, std::vector<cv::Point2f> points, cv::Scalar color, int radius){
+    for (size_t i = 0; i < points.size(); i++)
+    {
+        cv::circle(image, cv::Point(points[i].x,points[i].y), radius, color, -1);
     }
-    return num2;
 }
 
-int max(int num1, int num2){
-    if(num1 > num2){
-        return num1;
-    }
-    return num2;
-}

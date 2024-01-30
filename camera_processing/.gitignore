@@ -4,3 +4,6 @@ camera_processing
 CMakeFiles/
 cmake_install.*
 CMakeCache.txt
+test/
+lisiado/
+lisiado2/

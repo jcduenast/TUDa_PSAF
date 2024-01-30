@@ -46,7 +46,7 @@ void drawHoughPlt(cv::Mat canvas, std::vector<cv::Vec4i> plt_lines, cv::Scalar c
 int main (){
     // setup_test();
     // compare_record_w_own();
-    test_algo(3,0);
+    test_algo(3,1);
     return 0;
 }
 
@@ -400,8 +400,8 @@ void test_algo(int mode, int set){
 
     // Ahora estamos con herr lisiado 1 y 2
 
-    std::string local_root_path = "/home/ubi/usb/";  // pa' camilo
-    // std::string local_root_path = "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/";  // pa' Daniel
+    //std::string local_root_path = "/home/ubi/usb/";  // pa' camilo
+    std::string local_root_path = "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/";  // pa' Daniel
 
     root_path = local_root_path + "lisiado/";
     switch (set)

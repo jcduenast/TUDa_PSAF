@@ -20,6 +20,9 @@
 // for blobs
 #include <opencv2/features2d.hpp>
 
+// for regression
+#include <Eigen/Dense>
+
 #include "main.hpp"
 
 // using namespace cv;
@@ -40,6 +43,7 @@ void drawHoughStd(cv::Mat canvas, std::vector<cv::Vec2f> std_lines, cv::Scalar c
 void drawHoughPlt(cv::Mat canvas, std::vector<cv::Vec4i> plt_lines, cv::Scalar color, int thickness);
 void drawPoints(cv::Mat image, std::vector<cv::Point2f> points, cv::Scalar color, int radius);
 std::vector<cv::Point2f> getPoints(cv::Mat segmentedImage);
+std::vector<cv::Point2f> interpolatePoints(const std::vector<cv::Point2f>& points);
 
 int main (){
     // setup_test();
@@ -233,9 +237,16 @@ void lineClasification(cv::Mat raw_color_camera){
         cv::drawContours(result, rightLineRegion, i, cv::Scalar(0,0,255), cv::FILLED, cv::LINE_8);
         cv::drawContours(rightLineImage, rightLineRegion, i, cv::Scalar(255), cv::FILLED, cv::LINE_8);
     }
+    std::vector<cv::Point> central;
     for (int i=0; i<centerLinesRegion.size(); i++){       // Drawing contours of the center lines
         cv::drawContours(result, centerLinesRegion, i, cv::Scalar(255,255,0), cv::FILLED, cv::LINE_8);
         cv::drawContours(centerLineImage, centerLinesRegion, i, cv::Scalar(255), cv::FILLED, cv::LINE_8);
+
+        std::vector<cv::Point> aux = centerLinesRegion.at(i);
+        for (size_t j = 0; j < aux.size(); j++)
+        {
+            central.insert(central.begin(),aux.at(j));
+        }        
     }
 
     // Drawing contours and rectangles -----------------------------------------------------------------------
@@ -263,12 +274,28 @@ void lineClasification(cv::Mat raw_color_camera){
     std::vector<cv::Point2f> derecho = getPoints(rightLineImage);
 
     cv::Mat points_output = cv::Mat().zeros(cv::Size(result.cols, result.rows), CV_8UC3); //color_eagle.clone();
+
+    cv::Vec4f lineCenter;
+    cv::fitLine(central, lineCenter, cv::DIST_L1, 0, 0.01, 0.01);
+    cv::line(points_output, cv::Point(lineCenter[2], lineCenter[3]), cv::Point(lineCenter[2]+lineCenter[0]*1000, lineCenter[3]+lineCenter[1]*1000), cv::Scalar(0,150,255), 4);
     
+    //cv::Vec4f lineRight;
+    //cv::fitLine(rightLineRegion, lineRight, cv::DIST_L1, 0, 0.01, 0.01);
+    //cv::line(points_output, cv::Point(lineRight[2], lineRight[3]), cv::Point(lineRight[2]+lineRight[0]*1000, lineRight[3]+lineRight[1]*1000), cv::Scalar(255,0,150), 4);
+
     drawPoints(points_output, centro, cv::Scalar(0,255,0), 3);
     drawPoints(points_output, derecho, cv::Scalar(255,0,0), 3);
     drawPoints(points_output, izquierdo, cv::Scalar(0,0,255), 3);
 
+    //std::vector<cv::Point2f> derechoInterpoled = interpolatePoints(derecho);
+    //drawPoints(points_output, derechoInterpoled, cv::Scalar(255,255,255), 1);
+
+    //std::vector<cv::Point2f> centroInterpoled = interpolatePoints(centro);
+    //drawPoints(points_output, centroInterpoled, cv::Scalar(255,255,0), 1);
+
     cv::imshow("Clasification result", points_output);
+
+
 
     cv::waitKey(0);
     // std::cout << std::endl;
@@ -763,3 +790,47 @@ void drawPoints(cv::Mat image, std::vector<cv::Point2f> points, cv::Scalar color
     }
 }
 
+std::vector<cv::Point2f> interpolatePoints(const std::vector<cv::Point2f>& points) {
+    int n = points.size();
+
+    if (n < 3) {
+        // Quadratic regression requires at least 3 points
+        std::cerr << "Not enough points for quadratic regression." << std::endl;
+        return std::vector<cv::Point2f>();
+    }
+
+    //Eigen::MatrixXd A(n, 4);
+    Eigen::MatrixXd A(n, 3);
+    Eigen::VectorXd b(n);
+
+    for (int i = 0; i < n; ++i) {
+        //A(i, 0) = points[i].x * points[i].x * points[i].x;
+        A(i, 0) = points[i].x * points[i].x;
+        A(i, 1) = points[i].x;
+        A(i, 2) = 1.0;
+        b(i) = points[i].y;
+        std::cout<<b(i)<<"\n";
+    }
+
+    Eigen::VectorXd x = A.colPivHouseholderQr().solve(b);
+
+    // x(0): coefficient for x^2, x(1): coefficient for x, x(2): constant term
+    //std::cout << "Quadratic Regression Coefficients: a*x^2 + b*x + c" << std::endl;
+    //std::cout << "a: " << x(0) << ", b: " << x(1) << ", c: " << x(2) << std::endl;
+
+    // Create interpolated points - Original
+    /*std::vector<cv::Point2f> interpolatedPoints;
+    for (float x_val = points.front().x; x_val <= points.back().x; x_val += 0.1) {
+        float y_val = x(0) * x_val * x_val + x(1) * x_val + x(2);
+        interpolatedPoints.emplace_back(x_val, y_val);
+    }*/
+
+    // Daniel version
+    std::vector<cv::Point2f> interpolatedPoints;
+    for (float x_val = 0; x_val <= 640; x_val += 1) {
+        //float y_val = x(0) * x_val * x_val * x_val + x(1) * x_val * x_val + x(2) * x_val + x(3) ;
+        float y_val = x(0) * x_val * x_val + x(1) * x_val + x(2);
+        interpolatedPoints.emplace_back(x_val, y_val);
+    }
+    return interpolatedPoints;
+}

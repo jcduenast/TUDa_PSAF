@@ -1189,14 +1189,16 @@ std::vector<bool> filterConnectedCenterLines(std::vector<std::vector<cv::Point>>
             for (size_t j = 0; j < isCandidate.size(); j++)
             {
                 if(isCandidate[j] && i != j){
+                    std::cout<<i<<" with "<<j;
                     check1 = isAligned(candidatesContours[i],candidatesContours[j]);
                     check2 = isAligned(candidatesContours[j],candidatesContours[i]);
                     if(check1 and check2){
                         output[i] = true;
                         output[j] = true;
+                        std::cout<<i<<" positive "<<j;
                     }
-                    //if(check)   std::cout<<i<<" with "<<j;
-                    //std::cout<<"\n";
+                    //if(check)   
+                    std::cout<<"\n";
                 }
                 
             }
@@ -1209,22 +1211,36 @@ std::vector<bool> filterConnectedCenterLines(std::vector<std::vector<cv::Point>>
 
 bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2){
     const float TOLERANCE = 30; 
-
+    const bool slope_mode = true;
     cv::Vec4f output1, output2;
     cv::fitLine(area1,output1,cv::DIST_L2, 0, 0.01, 0.01);
     cv::fitLine(area2,output2,cv::DIST_L2, 0, 0.01, 0.01);
 
+    //Calculate distance between the two centers and reject very close/far lines
+    float distance = cv::norm(cv::Point2f(output2[2],output2[3]) - cv::Point2f(output1[2],output1[3]));
+    if(distance < 100 || distance > 175){
+        return false;
+    }
+
     if(output1[1] == 0) output1[1] = 0.001;
     if(output2[3] == output1[3]) output1[3] += 0.001;
 
-    float slope = output1[0] / output1[1];
-    float x_test = (output2[3] - output1[3]) * slope + output1[2];
-    float dy = std::abs(x_test - output2[2]);
+    if(output1[0] == 0) output1[0] = 0.001;
+    if(output2[2] == output1[2]) output1[2] += 0.001;
+
+    float slope_y = output1[0] / output1[1];
+    float x_test = (output2[3] - output1[3]) * slope_y + output1[2];
+    float dx = std::abs(x_test - output2[2]);
+
+    float slope_x = output1[1] / output1[0];
+    float y_test = (output2[2] - output1[2]) * slope_x + output1[3];
+    float dy = std::abs(y_test - output2[3]);
     //std::cout<<x_test<<" vs. "<<output2[2]<<". Diff: "<<dy<<". \t";
 
-    if( dy < TOLERANCE){
+    if( dy < TOLERANCE || dx < TOLERANCE){
         //std::cout<<y_test<<" vs. "<<output2[3]<<"\n";
         return true;
     } 
+
     return false;
 }

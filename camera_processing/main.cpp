@@ -42,6 +42,8 @@ std::vector<std::vector<std::vector<cv::Point>>> lineClasification_aux(cv::Mat r
 void test_algo(int mode, int set);
 void drawHoughStd(cv::Mat canvas, std::vector<cv::Vec2f> std_lines, cv::Scalar color, int thickness);
 void drawHoughPlt(cv::Mat canvas, std::vector<cv::Vec4i> plt_lines, cv::Scalar color, int thickness);
+std::vector<bool> filterConnectedCenterLines(std::vector<std::vector<cv::Point>> candidatesContours,std::vector<bool> isCandidate);
+bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2);
 
 int main (){
     // setup_test();
@@ -51,6 +53,14 @@ int main (){
 }
 
 void lineClasification(cv::Mat raw_color_camera){
+
+    const int MIN_WIDTH_CENTER_LINE = 7;
+    const int MAX_WIDTH_CENTER_LINE = 25;
+    const int MIN_LENGTH_CENTER_LINE = 50;
+    const int MAX_LENGTH_CENTER_LINE = 100;
+    const int MIN_AREA_CENTER_LINE = 100;
+    const int MAX_AREA_CENTER_LINE = 400;
+
     cv::Mat gray, blurred, binary, binary_eagle;
     cv::cvtColor(raw_color_camera, gray, cv::COLOR_BGR2GRAY);
     cv::GaussianBlur(gray, blurred, cv::Size(9, 9), 0, 0, cv::BORDER_DEFAULT);
@@ -78,7 +88,7 @@ void lineClasification(cv::Mat raw_color_camera){
     // Draw all contours in grey, will be overwritten when classified
     for (int i=0; i<cntAll.size(); i++) cv::drawContours(result, cntAll, i, cv::Scalar(100,100,100), cv::FILLED, cv::LINE_8);
 
-    // delete small contours -------------------------------------------------------------
+    // filter small contours -------------------------------------------------------------
     for (int i=0; i<cntAll.size(); i++)     if (cntAll[i].size() > 100) cnt.insert(cnt.begin(), cntAll[i]);
 
     // finding the contour (cnt) with the largest area to tag them as either left or right lines --------------------------------------
@@ -111,15 +121,17 @@ void lineClasification(cv::Mat raw_color_camera){
     std::vector<cv::Moments> mu(cnt.size());
     std::vector<double[7]> huMo(cnt.size());
     
+    //Calculating Hu Moments for each contour
     for (int i=0; i<cnt.size(); i++){
         mu[i] = cv::moments(cnt[i]);
         cv::HuMoments(mu[i], huMo[i]);
     }
 
+    //Calculating more descriptors
     for (int i=0; i<cnt.size(); i++){
         boundRect[i] = cv::boundingRect(cnt[i]);
         boundMinArea[i] = cv::minAreaRect(cnt[i]);
-        minEllipse[i] = cv::fitEllipse(cnt[i]);
+        // minEllipse[i] = cv::fitEllipse(cnt[i]);
         // cv::fitLine(cnt[i], lineCnt[i], cv::DIST_L1, 0, 0.01, 0.01);
         cv::fitLine(cnt[i], lineCnt[i], cv::DIST_L2, 0, 0.01, 0.01);        // L2 distance, more computationally expensive
     }
@@ -161,10 +173,12 @@ void lineClasification(cv::Mat raw_color_camera){
         std::cout << "There is no largest candidate. :(" << std::endl; // haven't happened yet :D
     }
 
-    // // lets find center lines -------------------------------------------------------------------------------------------------------------------------
+    //Let's find center lines -------------------------------------------------------------------------------------------------------------------------
+    // lineCnt[i]: vector of 4 components (vx,vy,x0,y0) corresponding to the fitting line of the 'i' contour  
     int minDst, maxDst;
     std::vector<int> centerCandidateIndex;
-    double mLeft, mRight, bLeft, bRight, x_test;        // line description of the left and right lines
+    // Calculating line description of the left and right lines ('m...' is slope and 'b...' is intercept)
+    double mLeft, mRight, bLeft, bRight, x_test;        
     if (rightLineRegion.size() > 0 && lineCnt[rightLineIndex][0] != 0){
         mRight = lineCnt[rightLineIndex][1]/lineCnt[rightLineIndex][0];
         bRight = lineCnt[rightLineIndex][3] - mRight*lineCnt[rightLineIndex][2];
@@ -173,22 +187,26 @@ void lineClasification(cv::Mat raw_color_camera){
         mLeft = lineCnt[leftLineIndex][1]/lineCnt[leftLineIndex][0];
         bLeft = lineCnt[leftLineIndex][3] - mLeft*lineCnt[leftLineIndex][2];
     }
+    //Iterate over all contours
     for (int i=0; i<cnt.size(); i++){
         // std::cout << "Lines indexes: left " << std::to_string(leftLineIndex) << " right " << std::to_string(rightLineIndex) << std::endl;
-        if (i == leftLineIndex || i == rightLineIndex){     // Do nothing, this loop is for the center lines
+        if (i == leftLineIndex || i == rightLineIndex){     
+            // Do nothing, this loop is for the center lines
             // std::cout << "Cnt " << std::to_string(i) << " with " << std::to_string(cnt[i].size()) << " points was skipped.  skipped. Index of largest cnt: ";
             // std::cout << std::to_string(indexLargestCnt) << std::endl;
         }else{
             // std::cout << "Cnt " << std::to_string(i) << " with " << std::to_string(cnt[i].size()) << " points was not! skipped. Index of largest cnt: ";
             // std::cout << std::to_string(indexLargestCnt) << std::endl;
+            // Calculate the 4 vertices of the minimum bounding box and assign to 'rotatedRectPoints_aux'
             boundMinArea[i].points(rotatedRectPoints_aux);
+            // Calculate the length of the shortest (minDst) and longest (maxDst) side
             minDst = std::min(cv::norm(rotatedRectPoints_aux[0]-rotatedRectPoints_aux[1]), cv::norm(rotatedRectPoints_aux[1]-rotatedRectPoints_aux[2]));
             maxDst = std::max(cv::norm(rotatedRectPoints_aux[0]-rotatedRectPoints_aux[1]), cv::norm(rotatedRectPoints_aux[1]-rotatedRectPoints_aux[2]));
             cv::putText(result, std::to_string(minDst) + " " + std::to_string(maxDst), cv::Point(boundRect[i].tl().x-15, boundRect[i].br().y+15), 
                         cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
-            
+
             // Check about the width of the minAre bounding box and its relative position
-            if (minDst < 35 && maxDst < 135){
+            if (minDst < MAX_WIDTH_CENTER_LINE && maxDst < MAX_LENGTH_CENTER_LINE){
                 // std::cout << "Left index: " << std::to_string(leftLineIndex) << " " << std::to_string(leftLineRegion.size());
                 // std::cout << " Right index: " << std::to_string(rightLineIndex) << " " << std::to_string(rightLineRegion.size()) << std::endl;
                 if (leftLineRegion.size() > 0 && rightLineRegion.size() == 0){          // There is only a left line
@@ -307,11 +325,11 @@ void lineClasification(cv::Mat raw_color_camera){
     cv::Mat centerLinesSegmentation = cv::Mat().zeros(binary_eagle.size(), CV_8UC3);    // to show the result of the segmentation
     std::vector<std::vector<cv::Point>> cntCenterCandidates;
 
-    // Drawing all contours in gray, the center ones will be overwritten
+    // Drawing all contours in gray, the center ones will be later resalted
     for (int i=0; i<cntAll.size(); i++) cv::drawContours(centerLinesSegmentation, cntAll, i, cv::Scalar(70,70,70), cv::FILLED, cv::LINE_8);
 
     for (int i=0; i<cntAll.size(); i++){    // sorting out by size of contour
-        if (cntAll[i].size() > 100 && cntAll[i].size()<400){
+        if (cntAll[i].size() > MIN_AREA_CENTER_LINE && cntAll[i].size() < MAX_AREA_CENTER_LINE){
             cntCenterCandidates.insert(cntCenterCandidates.begin(), cntAll[i]);
         }
     }
@@ -325,23 +343,31 @@ void lineClasification(cv::Mat raw_color_camera){
 
     for (int i=0; i<cntCenterCandidates.size(); i++){
         centerBoundRect[i] = cv::boundingRect(cntCenterCandidates[i]);
-        centerRotBoundRect[i] = cv::minAreaRect(cntCenterCandidates[i]);
-        centerRotBoundRect[i].points(centerRotRectPoints_aux);
+        cv::minAreaRect(cntCenterCandidates[i]).points(centerRotRectPoints_aux);
         center_minDst = std::min(cv::norm(centerRotRectPoints_aux[0]-centerRotRectPoints_aux[1]), cv::norm(centerRotRectPoints_aux[1]-centerRotRectPoints_aux[2]));
         center_maxDst = std::max(cv::norm(centerRotRectPoints_aux[0]-centerRotRectPoints_aux[1]), cv::norm(centerRotRectPoints_aux[1]-centerRotRectPoints_aux[2]));
-        cv::putText(centerLinesSegmentation, std::to_string(center_minDst) + " " + std::to_string(center_maxDst),
+        //Labeling the size
+        cv::putText(centerLinesSegmentation, std::to_string(center_minDst) + " " + std::to_string(center_maxDst)+ " i:" + std::to_string(i),
                     cv::Point(centerBoundRect[i].tl().x-15, centerBoundRect[i].br().y+15), 
                     cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+        //Drawing the minimum bounding box
         for (int j=0; j<4; j++) {
             cv::line(centerLinesSegmentation, centerRotRectPoints_aux[j], centerRotRectPoints_aux[(j+1)%4], cv::Scalar(150,150,0));
         }
+        //Drawing the rect bounding box
         cv::rectangle(centerLinesSegmentation, centerBoundRect[i].tl(), centerBoundRect[i].br(), cv::Scalar(255,255,255), 1, cv::LINE_8);
-        if(center_minDst > 7 && center_minDst < 25 && center_maxDst < 100){
+        //Verifying the width and length for each center line
+        if(center_minDst > MIN_WIDTH_CENTER_LINE && center_minDst < MAX_WIDTH_CENTER_LINE 
+            && center_maxDst > MIN_LENGTH_CENTER_LINE && center_maxDst < MAX_LENGTH_CENTER_LINE){
             boolCenter[i] = true;
         }else{
             boolCenter[i] = false;
         }
     }
+
+    //Check for each center line if its line vector connects it to the anothers lines
+
+    boolCenter = filterConnectedCenterLines(cntCenterCandidates,boolCenter);
 
     // Revisando la distribución estadística horizontal (en eje Y) No funciona, [abortado]
 
@@ -352,9 +378,6 @@ void lineClasification(cv::Mat raw_color_camera){
             cv::drawContours(centerLinesSegmentation, cntCenterCandidates, i, cv::Scalar(255,255,0), cv::FILLED, cv::LINE_8);
         }
     }
-    
-
-
 
     // Drawing contours and rectangles -----------------------------------------------------------------------
     for (int i=0; i<cnt.size(); i++){       
@@ -1155,4 +1178,53 @@ std::vector<std::vector<std::vector<cv::Point>>> lineClasification_aux(cv::Mat r
     output.insert(output.begin(), centerLinesRegion);
     output.insert(output.begin(), rightLineRegion);
     return output;
+}
+
+std::vector<bool> filterConnectedCenterLines(std::vector<std::vector<cv::Point>> candidatesContours,std::vector<bool> isCandidate){
+    bool check1 , check2;
+    std::vector<bool> output(isCandidate.size(),false);
+    for (size_t i = 0; i < isCandidate.size(); i++)
+    {
+        if(isCandidate[i]){
+            for (size_t j = 0; j < isCandidate.size(); j++)
+            {
+                if(isCandidate[j] && i != j){
+                    check1 = isAligned(candidatesContours[i],candidatesContours[j]);
+                    check2 = isAligned(candidatesContours[j],candidatesContours[i]);
+                    if(check1 and check2){
+                        output[i] = true;
+                        output[j] = true;
+                    }
+                    //if(check)   std::cout<<i<<" with "<<j;
+                    //std::cout<<"\n";
+                }
+                
+            }
+            
+        }
+    }
+    
+    return output;
+}
+
+bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2){
+    const float TOLERANCE = 30; 
+
+    cv::Vec4f output1, output2;
+    cv::fitLine(area1,output1,cv::DIST_L2, 0, 0.01, 0.01);
+    cv::fitLine(area2,output2,cv::DIST_L2, 0, 0.01, 0.01);
+
+    if(output1[1] == 0) output1[1] = 0.001;
+    if(output2[3] == output1[3]) output1[3] += 0.001;
+
+    float slope = output1[0] / output1[1];
+    float x_test = (output2[3] - output1[3]) * slope + output1[2];
+    float dy = std::abs(x_test - output2[2]);
+    //std::cout<<x_test<<" vs. "<<output2[2]<<". Diff: "<<dy<<". \t";
+
+    if( dy < TOLERANCE){
+        //std::cout<<y_test<<" vs. "<<output2[3]<<"\n";
+        return true;
+    } 
+    return false;
 }

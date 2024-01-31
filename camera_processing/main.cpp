@@ -44,6 +44,7 @@ void drawHoughStd(cv::Mat canvas, std::vector<cv::Vec2f> std_lines, cv::Scalar c
 void drawHoughPlt(cv::Mat canvas, std::vector<cv::Vec4i> plt_lines, cv::Scalar color, int thickness);
 std::vector<bool> filterConnectedCenterLines(std::vector<std::vector<cv::Point>> candidatesContours,std::vector<bool> isCandidate);
 bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2);
+float getPositionAtBottom(std::vector<cv::Point> line); 
 
 int main (){
     // setup_test();
@@ -60,6 +61,8 @@ void lineClasification(cv::Mat raw_color_camera){
     const int MAX_LENGTH_CENTER_LINE = 100;
     const int MIN_AREA_CENTER_LINE = 100;
     const int MAX_AREA_CENTER_LINE = 400;
+    const int MIN_AREA_LATERAL_LINE = 600;
+    const int WIDTH_IMAGE = 640;
 
     cv::Mat gray, blurred, binary, binary_eagle;
     cv::cvtColor(raw_color_camera, gray, cv::COLOR_BGR2GRAY);
@@ -341,6 +344,7 @@ void lineClasification(cv::Mat raw_color_camera){
     cv::Point2f centerRotRectPoints_aux[4];
     int center_minDst, center_maxDst;
 
+    //Label, draw and filter by size the center lines
     for (int i=0; i<cntCenterCandidates.size(); i++){
         centerBoundRect[i] = cv::boundingRect(cntCenterCandidates[i]);
         cv::minAreaRect(cntCenterCandidates[i]).points(centerRotRectPoints_aux);
@@ -369,7 +373,58 @@ void lineClasification(cv::Mat raw_color_camera){
 
     boolCenter = filterConnectedCenterLines(cntCenterCandidates,boolCenter);
 
+    //Create a region for all the connected center lines
+    std::vector<cv::Point> centerRegion;
+    for (size_t i = 0; i < cntCenterCandidates.size(); i++)
+    {
+        if(boolCenter[i] == true){
+            std::vector<cv::Point> auxRegion = cntCenterCandidates.at(i);
+            for (size_t j = 0; j < auxRegion.size(); j++)
+            {
+                centerRegion.push_back(auxRegion.at(j));
+            }
+        }
+    }
+
     // Revisando la distribución estadística horizontal (en eje Y) No funciona, [abortado]
+
+    //Check the biggest contours and defining left and right line
+    std::vector<int> indexLongLines;
+    bool isLeftLine = false;
+    bool isRightLine = false;
+    //Selecting the biggest than the minimum area defined
+     for (int i=0; i<cntAll.size(); i++){
+        if (cntAll[i].size() > MIN_AREA_LATERAL_LINE){
+            indexLongLines.push_back(i);
+        }
+    }
+    //Check which one is placed nearest to the center lines and its relative position
+
+    //Check if there are detected center lines
+    if(centerRegion.size()>2){
+        float centerLinePosition = getPositionAtBottom(centerRegion);
+        float leftLinePosition = -999999999999;
+        float rightLinePosition = 99999999999;
+        for (size_t i = 0; i < indexLongLines.size(); i++)
+        {
+            float aux = getPositionAtBottom(cntAll[indexLongLines.at(i)]); 
+            //std::cout<<"POS LINE:\t"<<aux<<"\tPOS CENTER:\t"<<centerLinePosition<<"\n";
+            if(aux > leftLinePosition && aux < centerLinePosition){
+                leftLineIndex = indexLongLines.at(i);
+                leftLinePosition = aux;
+                isLeftLine = true;
+            }
+            else if (aux < rightLinePosition && aux > centerLinePosition)
+            {
+                rightLineIndex = indexLongLines.at(i);
+                rightLinePosition = aux;
+                isRightLine = true;
+            }        
+        }
+    }
+
+    
+    
 
 
     // Dibujando ya los que sí quedaron finalmente-------------------------------------------------------
@@ -378,6 +433,8 @@ void lineClasification(cv::Mat raw_color_camera){
             cv::drawContours(centerLinesSegmentation, cntCenterCandidates, i, cv::Scalar(255,255,0), cv::FILLED, cv::LINE_8);
         }
     }
+    if(isRightLine) cv::drawContours(centerLinesSegmentation, cntAll, rightLineIndex, cv::Scalar(0,0,255), cv::FILLED, cv::LINE_8);
+    if(isLeftLine)  cv::drawContours(centerLinesSegmentation, cntAll, leftLineIndex, cv::Scalar(0,255,0), cv::FILLED, cv::LINE_8);
 
     // Drawing contours and rectangles -----------------------------------------------------------------------
     for (int i=0; i<cnt.size(); i++){       
@@ -1189,23 +1246,19 @@ std::vector<bool> filterConnectedCenterLines(std::vector<std::vector<cv::Point>>
             for (size_t j = 0; j < isCandidate.size(); j++)
             {
                 if(isCandidate[j] && i != j){
-                    std::cout<<i<<" with "<<j;
+                    //std::cout<<i<<" with "<<j;
                     check1 = isAligned(candidatesContours[i],candidatesContours[j]);
                     check2 = isAligned(candidatesContours[j],candidatesContours[i]);
                     if(check1 and check2){
                         output[i] = true;
                         output[j] = true;
-                        std::cout<<i<<" positive "<<j;
+                        //std::cout<<i<<" positive "<<j;
                     }
-                    //if(check)   
-                    std::cout<<"\n";
-                }
-                
-            }
-            
+                    //std::cout<<"\n";
+                }   
+            } 
         }
     }
-    
     return output;
 }
 
@@ -1241,6 +1294,45 @@ bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2){
         //std::cout<<y_test<<" vs. "<<output2[3]<<"\n";
         return true;
     } 
-
     return false;
 }
+
+float getPositionAtBottom(std::vector<cv::Point> line){
+    const int HEIGHT_IMAGE = 480;
+    cv::Vec4f output;
+    cv::fitLine(line,output,cv::DIST_L2, 0, 0.01, 0.01);
+    if(output[1] == 0)  output[1]+=0.001;
+    float x_test = output[2] + (HEIGHT_IMAGE - output[3])*(output[0]/output[1]);
+    return x_test;
+}
+
+// if (index2ndLargestCnt != -1){                                              // There is a 2nd large contour
+//         // std::cout << "Actually, there are two! :D" << std::endl;
+//         // cv::putText(result, "There are two big groups (line 119)", cv::Point(50, 700), 
+//         //                 cv::FONT_HERSHEY_COMPLEX_SMALL , 3, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+//         if (boundRect[indexLargestCnt].x < boundRect[index2ndLargestCnt].x){    // Si el más grande empieza más a la izquierda
+//                                                                                 // Vamos por el carril izquierdo, probablemente
+//             leftLineRegion.insert(leftLineRegion.begin(), cnt[indexLargestCnt]);
+//             leftLineIndex = indexLargestCnt;
+//             // std::cout << std::to_string(boundRect[indexLargestCnt].x) << " < " << boundRect[index2ndLargestCnt].x << std::endl;
+//             rightLineRegion.insert(rightLineRegion.begin(), cnt[index2ndLargestCnt]);
+//             rightLineIndex = index2ndLargestCnt;
+//         }else{                                                                  // Vamos por el carril derecho, probablemente
+//             rightLineRegion.insert(rightLineRegion.begin(), cnt[indexLargestCnt]);
+//             rightLineIndex = indexLargestCnt;
+//             // std::cout << std::to_string(boundRect[indexLargestCnt].x) << " > " << boundRect[index2ndLargestCnt].x << std::endl;
+//             leftLineRegion.insert(leftLineRegion.begin(), cnt[index2ndLargestCnt]);
+//             leftLineIndex = index2ndLargestCnt;
+//         }   // Usemos la información de las líneas centrales para asignar la otra línea
+//     }else{                          // There is no second line
+//         boundMinArea[indexLargestCnt].points(rotatedRectPoints_aux);
+//         if( rotatedRectPoints_aux[3].x < binary_eagle.size().width/2){  //Using the bottom-right coordinates point of the minimumRectangleArea to classify them
+//             leftLineRegion.insert(leftLineRegion.begin(), cnt[indexLargestCnt]);
+//             leftLineIndex = indexLargestCnt;
+//             std::cout << std::to_string(rotatedRectPoints_aux[3].x) << " < " << std::to_string(binary_eagle.size().width/2) << std::endl;
+//         }else{
+//             rightLineRegion.insert(rightLineRegion.begin(), cnt[indexLargestCnt]);
+//             rightLineIndex = indexLargestCnt;
+//             std::cout << std::to_string(rotatedRectPoints_aux[3].x) << " > " << std::to_string(binary_eagle.size().width/2) << std::endl;
+//         }
+//     }

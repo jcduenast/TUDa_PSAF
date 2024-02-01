@@ -205,8 +205,6 @@ void lineClasification(cv::Mat raw_color_camera){
     }
 
     // for parking info processing
-
-    cv::imshow("Clasification logic", result);
     cv::imshow("Center lines segmentation", centerLinesSegmentation);
     cv::waitKey(0);
     // std::cout << std::endl;

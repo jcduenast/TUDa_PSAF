@@ -45,6 +45,10 @@ void drawHoughPlt(cv::Mat canvas, std::vector<cv::Vec4i> plt_lines, cv::Scalar c
 std::vector<bool> filterConnectedCenterLines(std::vector<std::vector<cv::Point>> candidatesContours,std::vector<bool> isCandidate);
 bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2);
 float getPositionAtBottom(std::vector<cv::Point> line); 
+std::vector<bool> filterConnectedCenterLines(std::vector<std::vector<cv::Point>> candidatesContours,std::vector<bool> isCandidate);
+bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2);
+float getPositionAtBottom(std::vector<cv::Point> line); 
+cv::Point getMaxYPoint(std::vector<cv::Point> region);
 
 int main (){
     // setup_test();
@@ -61,7 +65,7 @@ void lineClasification(cv::Mat raw_color_camera){
     const int MAX_LENGTH_CENTER_LINE = 100;
     const int MIN_AREA_CENTER_LINE = 100;
     const int MAX_AREA_CENTER_LINE = 400;
-    const int MIN_AREA_LATERAL_LINE = 600;
+    const int MIN_AREA_LATERAL_LINE = 500;
     const int WIDTH_IMAGE = 640;
 
     cv::Mat gray, blurred, binary, binary_eagle;
@@ -376,7 +380,7 @@ void lineClasification(cv::Mat raw_color_camera){
     bool isLeftLine = false;
     bool isRightLine = false;
     //Selecting the biggest than the minimum area defined
-    for (int i=0; i<cntAll.size(); i++){
+     for (int i=0; i<cntAll.size(); i++){
         if (cntAll[i].size() > MIN_AREA_LATERAL_LINE){
             indexLongLines.push_back(i);
         }
@@ -416,8 +420,16 @@ void lineClasification(cv::Mat raw_color_camera){
             cv::drawContours(centerLinesSegmentation, cntCenterCandidates, i, cv::Scalar(255,255,0), cv::FILLED, cv::LINE_8);
         }
     }
-    if(isRightLine) cv::drawContours(centerLinesSegmentation, cntAll, rightLineIndex, cv::Scalar(0,0,255), cv::FILLED, cv::LINE_8);
-    if(isLeftLine)  cv::drawContours(centerLinesSegmentation, cntAll, leftLineIndex, cv::Scalar(0,255,0), cv::FILLED, cv::LINE_8);
+    if(isRightLine){
+        cv::drawContours(centerLinesSegmentation, cntAll, rightLineIndex, cv::Scalar(0,0,255), cv::FILLED, cv::LINE_8);
+        cv::Point aux = getMaxYPoint(cntAll[rightLineIndex]);
+        std::cout<<"\nEl borde inferior del derecho es: "<<aux.x<<","<<aux.y<<"\n";
+    }
+    if(isLeftLine){
+        cv::drawContours(centerLinesSegmentation, cntAll, leftLineIndex, cv::Scalar(0,255,0), cv::FILLED, cv::LINE_8);
+        cv::Point aux = getMaxYPoint(cntAll[leftLineIndex]);
+        std::cout<<"\nEl borde inferior del izquierdo es: "<<aux.x<<","<<aux.y<<"\n";
+    }
 
     // Drawing contours and rectangles -----------------------------------------------------------------------
     for (int i=0; i<cnt.size(); i++){       
@@ -907,6 +919,7 @@ std::vector<bool> filterConnectedCenterLines(std::vector<std::vector<cv::Point>>
 
 bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2){
     const float TOLERANCE = 30; 
+    const float TOLERANCE_HIT = 10;
     const bool slope_mode = true;
     cv::Vec4f output1, output2;
     cv::fitLine(area1,output1,cv::DIST_L2, 0, 0.01, 0.01);
@@ -918,12 +931,14 @@ bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2){
         return false;
     }
 
+    //Avoid divisions by 0
     if(output1[1] == 0) output1[1] = 0.001;
     if(output2[3] == output1[3]) output1[3] += 0.001;
 
     if(output1[0] == 0) output1[0] = 0.001;
     if(output2[2] == output1[2]) output1[2] += 0.001;
 
+    //Calculate slopes and projections along the vector for each axis
     float slope_y = output1[0] / output1[1];
     float x_test = (output2[3] - output1[3]) * slope_y + output1[2];
     float dx = std::abs(x_test - output2[2]);
@@ -933,6 +948,24 @@ bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2){
     float dy = std::abs(y_test - output2[3]);
     //std::cout<<x_test<<" vs. "<<output2[2]<<". Diff: "<<dy<<". \t";
 
+    //Check if the projected vector hits the bounding box of the second line
+    cv::Rect bb = cv::boundingRect(area2);
+    float v1_x= bb.br().x;
+    float v1_y= bb.br().y;
+    float v2_x= bb.tl().x;
+    float v2_y= bb.tl().y;
+
+    float hit = (v1_x - output1[2]) * slope_x + output1[3];
+    if((hit >= v1_y - TOLERANCE_HIT && hit <= v2_y + TOLERANCE_HIT) || (hit >= v2_y - TOLERANCE_HIT && hit <= v1_y + TOLERANCE_HIT))    return true;
+    hit = (v2_x - output1[2]) * slope_x + output1[3];
+    if((hit >= v1_y - TOLERANCE_HIT && hit <= v2_y + TOLERANCE_HIT) || (hit >= v2_y - TOLERANCE_HIT && hit <= v1_y + TOLERANCE_HIT))    return true;
+    hit = (v1_y - output1[3]) * slope_y + output1[2];
+    if((hit >= v1_x - TOLERANCE_HIT && hit <= v2_x + TOLERANCE_HIT) || (hit >= v2_x - TOLERANCE_HIT && hit <= v1_x + TOLERANCE_HIT))    return true;
+    hit = (v2_y - output1[3]) * slope_y + output1[2];
+    if((hit >= v1_x - TOLERANCE_HIT && hit <= v2_x + TOLERANCE_HIT) || (hit >= v2_x - TOLERANCE_HIT && hit <= v1_x + TOLERANCE_HIT))    return true;
+
+
+    //Compare the projection and the position of the second line
     if( dy < TOLERANCE || dx < TOLERANCE){
         //std::cout<<y_test<<" vs. "<<output2[3]<<"\n";
         return true;
@@ -941,10 +974,52 @@ bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2){
 }
 
 float getPositionAtBottom(std::vector<cv::Point> line){
-    const int HEIGHT_IMAGE = 480;
-    cv::Vec4f output;
-    cv::fitLine(line,output,cv::DIST_L2, 0, 0.01, 0.01);
-    if(output[1] == 0)  output[1]+=0.001;
-    float x_test = output[2] + (HEIGHT_IMAGE - output[3])*(output[0]/output[1]);
-    return x_test;
+    //const int HEIGHT_IMAGE = 480;
+    //cv::Vec4f output;
+    //cv::fitLine(line,output,cv::DIST_L2, 0, 0.01, 0.01);
+    //if(output[1] == 0)  output[1]+=0.001;
+    //float x_test = output[2] + (HEIGHT_IMAGE - output[3])*(output[0]/output[1]);
+    //return x_test;
+
+    return getMaxYPoint(line).x;
 }
+
+cv::Point getMaxYPoint(std::vector<cv::Point> region){
+    auto max_x_point_iterator = std::max_element(region.begin(), region.end(),
+        [](const cv::Point& p1, const cv::Point& p2) {
+            return p1.y < p2.y;
+        });
+    cv::Point output = *max_x_point_iterator;
+    return output;
+} 
+
+// if (index2ndLargestCnt != -1){                                              // There is a 2nd large contour
+//         // std::cout << "Actually, there are two! :D" << std::endl;
+//         // cv::putText(result, "There are two big groups (line 119)", cv::Point(50, 700), 
+//         //                 cv::FONT_HERSHEY_COMPLEX_SMALL , 3, CV_RGB(255,255,255), 1, cv::LINE_8, false);
+//         if (boundRect[indexLargestCnt].x < boundRect[index2ndLargestCnt].x){    // Si el más grande empieza más a la izquierda
+//                                                                                 // Vamos por el carril izquierdo, probablemente
+//             leftLineRegion.insert(leftLineRegion.begin(), cnt[indexLargestCnt]);
+//             leftLineIndex = indexLargestCnt;
+//             // std::cout << std::to_string(boundRect[indexLargestCnt].x) << " < " << boundRect[index2ndLargestCnt].x << std::endl;
+//             rightLineRegion.insert(rightLineRegion.begin(), cnt[index2ndLargestCnt]);
+//             rightLineIndex = index2ndLargestCnt;
+//         }else{                                                                  // Vamos por el carril derecho, probablemente
+//             rightLineRegion.insert(rightLineRegion.begin(), cnt[indexLargestCnt]);
+//             rightLineIndex = indexLargestCnt;
+//             // std::cout << std::to_string(boundRect[indexLargestCnt].x) << " > " << boundRect[index2ndLargestCnt].x << std::endl;
+//             leftLineRegion.insert(leftLineRegion.begin(), cnt[index2ndLargestCnt]);
+//             leftLineIndex = index2ndLargestCnt;
+//         }   // Usemos la información de las líneas centrales para asignar la otra línea
+//     }else{                          // There is no second line
+//         boundMinArea[indexLargestCnt].points(rotatedRectPoints_aux);
+//         if( rotatedRectPoints_aux[3].x < binary_eagle.size().width/2){  //Using the bottom-right coordinates point of the minimumRectangleArea to classify them
+//             leftLineRegion.insert(leftLineRegion.begin(), cnt[indexLargestCnt]);
+//             leftLineIndex = indexLargestCnt;
+//             std::cout << std::to_string(rotatedRectPoints_aux[3].x) << " < " << std::to_string(binary_eagle.size().width/2) << std::endl;
+//         }else{
+//             rightLineRegion.insert(rightLineRegion.begin(), cnt[indexLargestCnt]);
+//             rightLineIndex = indexLargestCnt;
+//             std::cout << std::to_string(rotatedRectPoints_aux[3].x) << " > " << std::to_string(binary_eagle.size().width/2) << std::endl;
+//         }
+//     }

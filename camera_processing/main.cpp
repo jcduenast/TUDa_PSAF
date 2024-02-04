@@ -525,7 +525,7 @@ std::vector<std::vector<cv::Point>> lineClasification(cv::Mat raw_color_camera){
 
     //cv::imshow("Clasification logic", result);
     cv::imshow("Center lines segmentation", centerLinesSegmentation);
-    cv::waitKey(0);
+    //cv::waitKey(0);
     // std::cout << std::endl;
     std::vector<cv::Point> empty;
     std::vector<std::vector<cv::Point>> output;
@@ -552,19 +552,10 @@ void test_algo(int mode, int set){
 
     root_path = local_root_path + "lisiado" +std::to_string(set) +"/";
 
-
-    // switch (set)
-    // {
-    // case 0:
-    //     root_path = local_root_path + "lisiado/";
-    //     break;
-    // case 1:
-    //     root_path = local_root_path + "lisiado2/";
-    //     break; 
-    // default:
-    //     root_path = local_root_path + "lisiado/";
-    //     break;
-    // }
+    std::string fileLeft = local_root_path + "curveLeft/listImages.csv";
+    std::string fileRight = local_root_path + "curveRight/listImages.csv";
+    std::ofstream outputFileLeft(fileLeft, std::ios::app);
+    std::ofstream outputFileRight(fileRight, std::ios::app);
 
     // root_path = "/home/ubi/usb/run" + run_id_string + "/";
     // root_path = "/home/ubi/TUDa_PSAF/camera_processing/test/"; // path for camilo
@@ -575,56 +566,73 @@ void test_algo(int mode, int set){
     using std::chrono::duration;
     using std::chrono::milliseconds;
 
-    bool record = true;
+    bool record = false;
 
-    for(;; frame++){
-        auto t1 = high_resolution_clock::now();     // Start time measure 
-
-
-        cam_img_name = root_path + "raw_img_" + std::to_string(frame) + ".jpg";        // hasta la 2 está con png, de ahí en adelante con .jpg
-        std::cout << "Frame: " << std::to_string(frame) << " at: " << cam_img_name << std::endl;
-        og_img = cv::imread(cam_img_name);                                              // cargar la imagen de la camara a color
-        // proc_proposal(og_img);
-        std::vector<std::vector<cv::Point>> output = lineClasification(og_img);
-        std::vector<std::vector<cv::Point>> left;
-        std::vector<std::vector<cv::Point>> right;
-        left.push_back(output[0]);
-        right.push_back(output[1]);
-        // eagle_view_color = get_eagle_view(og_img, mode);                                // eagle view de la imagen original, a color
-        // own_processed = inf_processing(og_img, mode);                                   // imagen raw a color procesada por los infos
-        // own_processed_overlay = final_on_og(own_processed, eagle_view_color);
-        // cv::imshow("Own processing overlayed on color", own_processed_overlay);
-  
-        auto t2 = high_resolution_clock::now();      // Start time measure
-        /* Getting number of milliseconds as an integer. */
-        auto ms_int = duration_cast<milliseconds>(t2 - t1);
-
-        /* Getting number of milliseconds as a double. */
-        duration<double, std::milli> ms_double = t2 - t1;
-        // std::cout << ms_int.count() << "ms\n";
-        std::cout << ms_double.count() << "ms\n";
+    try
+    {
+        for(;; frame++){
+            auto t1 = high_resolution_clock::now();     // Start time measure 
 
 
-        if (record && output.size() > 0){
-            cv::Mat leftLines = cv::Mat().zeros(cv::Size(640,640), CV_8UC3);     // where the result of the algorithm will be visualized
-            if(output[0].size() > 1){
-                cv::drawContours(leftLines, left, -1, cv::Scalar(255,255,255), cv::FILLED, cv::LINE_8);
-                cv::imwrite(local_root_path + "curveLeft/" + std::to_string(set) + "_" + std::to_string(frame) + ".jpg", leftLines);
+            cam_img_name = root_path + "raw_img_" + std::to_string(frame) + ".jpg";        // hasta la 2 está con png, de ahí en adelante con .jpg
+            std::cout << "Frame: " << std::to_string(frame) << " at: " << cam_img_name << std::endl;
+            og_img = cv::imread(cam_img_name);                                              // cargar la imagen de la camara a color
+            // proc_proposal(og_img);
+            std::vector<std::vector<cv::Point>> output = lineClasification(og_img);
+            std::vector<std::vector<cv::Point>> left;
+            std::vector<std::vector<cv::Point>> right;
+            left.push_back(output[0]);
+            right.push_back(output[1]);
+            // eagle_view_color = get_eagle_view(og_img, mode);                                // eagle view de la imagen original, a color
+            // own_processed = inf_processing(og_img, mode);                                   // imagen raw a color procesada por los infos
+            // own_processed_overlay = final_on_og(own_processed, eagle_view_color);
+            // cv::imshow("Own processing overlayed on color", own_processed_overlay);
+    
+            auto t2 = high_resolution_clock::now();      // Start time measure
+            /* Getting number of milliseconds as an integer. */
+            auto ms_int = duration_cast<milliseconds>(t2 - t1);
+
+            /* Getting number of milliseconds as a double. */
+            duration<double, std::milli> ms_double = t2 - t1;
+            // std::cout << ms_int.count() << "ms\n";
+            std::cout << ms_double.count() << "ms\n";
+
+            std::string filename = std::to_string(set) + "_" + std::to_string(frame) + ".jpg";
+
+
+            if (record && output.size() > 0){
+                cv::Mat leftLines = cv::Mat().zeros(cv::Size(640,640), CV_8UC3);     // where the result of the algorithm will be visualized
+                if(output[0].size() > 1){
+                    cv::drawContours(leftLines, left, -1, cv::Scalar(255,255,255), cv::FILLED, cv::LINE_8);
+                    cv::imwrite(local_root_path + "curveLeft/" + filename, leftLines);
+                    outputFileLeft << filename << "\n";
+                }
+                
+                
+                // cv::Mat centerLines = cv::Mat().zeros(cv::Size(640,640), CV_8UC3);     // where the result of the algorithm will be visualized
+                // for (int i=0; i<output[1].size(); i++) cv::drawContours(centerLines, output[1], i, cv::Scalar(255,255,255), cv::FILLED, cv::LINE_8);
+                // cv::imwrite(root_path + "lines_center_" + std::to_string(frame) + ".jpg", centerLines);
+                
+                cv::Mat rightLines = cv::Mat().zeros(cv::Size(640,640), CV_8UC3);     // where the result of the algorithm will be visualized
+                if(output[1].size() > 1){
+                    cv::drawContours(rightLines, right, -1, cv::Scalar(255,255,255), cv::FILLED, cv::LINE_8);
+                    cv::imwrite(local_root_path + "curveRight/" + filename, rightLines);
+                    outputFileRight << filename << "\n";
+                }
+
             }
-            
-            
-            // cv::Mat centerLines = cv::Mat().zeros(cv::Size(640,640), CV_8UC3);     // where the result of the algorithm will be visualized
-            // for (int i=0; i<output[1].size(); i++) cv::drawContours(centerLines, output[1], i, cv::Scalar(255,255,255), cv::FILLED, cv::LINE_8);
-            // cv::imwrite(root_path + "lines_center_" + std::to_string(frame) + ".jpg", centerLines);
-            
-            cv::Mat rightLines = cv::Mat().zeros(cv::Size(640,640), CV_8UC3);     // where the result of the algorithm will be visualized
-            if(output[1].size() > 1){
-                cv::drawContours(rightLines, right, -1, cv::Scalar(255,255,255), cv::FILLED, cv::LINE_8);
-                cv::imwrite(local_root_path + "curveRight/" + std::to_string(set) + "_" + std::to_string(frame) + ".jpg", rightLines);
-            }
-
         }
     }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
+    
+
+    outputFileLeft.close();
+    outputFileRight.close();
+
+    std::cout<<"Programm succesfully ended\n";
     return;
 }
 

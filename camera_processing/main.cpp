@@ -225,33 +225,22 @@ void test_algo(int mode, int set){
     std::string local_root_path = "/home/ubi/usb/";  // pa' camilo
     // std::string local_root_path = "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/";  // pa' Daniel
 
-    root_path = local_root_path + "lisiado/";
-    switch (set)
-    {
-    case 0:
-        root_path = local_root_path + "lisiado/";
-        break;
-    case 1:
-        root_path = local_root_path + "lisiado2/";
-        break; 
-    default:
-        root_path = local_root_path + "lisiado/";
-        break;
-    }
+    root_path = local_root_path + "lisiado" + std::to_string(set) + "/";
 
     // root_path = "/home/ubi/usb/run" + run_id_string + "/";
     // root_path = "/home/ubi/TUDa_PSAF/camera_processing/test/"; // path for camilo
     // root_path = "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/test/"; // path for Daniel
 
-    bool record = true;
+    bool record_old = false;
 
     for(;; frame++){
         cam_img_name = root_path + "raw_img_" + std::to_string(frame) + ".jpg";        // hasta la 2 está con png, de ahí en adelante con .jpg
         std::cout << "Frame: " << std::to_string(frame) << " at: " << cam_img_name << std::endl;
         og_img = cv::imread(cam_img_name);                                              // cargar la imagen de la camara a color
         lineClasification(og_img);
+        
 
-        if (record){
+        if (record_old){
             std::vector<std::vector<std::vector<cv::Point>>> output = lineClasification_old(og_img);
             cv::Mat rightLines = cv::Mat().zeros(cv::Size(640,640), CV_8UC3);     // where the result of the algorithm will be visualized
             for (int i=0; i<output[0].size(); i++) cv::drawContours(rightLines, output[0], i, cv::Scalar(255,255,255), cv::FILLED, cv::LINE_8);

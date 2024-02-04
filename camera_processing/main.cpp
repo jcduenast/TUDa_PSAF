@@ -37,33 +37,45 @@ cv::Mat inf_processing(cv::Mat camera_raw_color, int mode);
 cv::Mat car_on_projection(cv::Mat img_in, int mode);
 cv::Mat final_on_og(cv::Mat img_final, cv::Mat img_og); // img_final U8C1
 std::vector<std::vector<cv::Point>> proc_proposal(cv::Mat camera_raw_color);
-void lineClasification(cv::Mat raw_color_camera);
+std::vector<std::vector<cv::Point>> lineClasification(cv::Mat raw_color_camera);
 std::vector<std::vector<std::vector<cv::Point>>> lineClasification_aux(cv::Mat raw_color_camera);
 void test_algo(int mode, int set);
 void drawHoughStd(cv::Mat canvas, std::vector<cv::Vec2f> std_lines, cv::Scalar color, int thickness);
 void drawHoughPlt(cv::Mat canvas, std::vector<cv::Vec4i> plt_lines, cv::Scalar color, int thickness);
 std::vector<bool> filterConnectedCenterLines(std::vector<std::vector<cv::Point>> candidatesContours,std::vector<bool> isCandidate);
 bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2);
-float getPositionAtBottom(std::vector<cv::Point> line); 
+cv::Point getPositionAtBottom(std::vector<cv::Point> line); 
 cv::Point getMaxYPoint(std::vector<cv::Point> region);
 
-int main (){
+bool trackingLeft;
+bool trackingRight;
+cv::Point trackPositionLeft;
+cv::Point trackPositionRight;
+
+int main (int argc, char *argv[]){
     // setup_test();
     // compare_record_w_own();
-    test_algo(3,1);
+    int set = 2;
+    if(argc > 1){
+        set = atoi(argv[1]);
+    }
+    trackingLeft = false;
+    trackingRight = false;
+    test_algo(3,set);
     return 0;
 }
 
-void lineClasification(cv::Mat raw_color_camera){
+std::vector<std::vector<cv::Point>> lineClasification(cv::Mat raw_color_camera){
 
     const int MIN_WIDTH_CENTER_LINE = 7;
-    const int MAX_WIDTH_CENTER_LINE = 25;
-    const int MIN_LENGTH_CENTER_LINE = 50;
+    const int MAX_WIDTH_CENTER_LINE = 30;
+    const int MIN_LENGTH_CENTER_LINE = 42;
     const int MAX_LENGTH_CENTER_LINE = 100;
     const int MIN_AREA_CENTER_LINE = 100;
     const int MAX_AREA_CENTER_LINE = 400;
     const int MIN_AREA_LATERAL_LINE = 500;
     const int WIDTH_IMAGE = 640;
+    const int TOLERANCE_TRACKING = 10;
 
     cv::Mat gray, blurred, binary, binary_eagle;
     cv::cvtColor(raw_color_camera, gray, cv::COLOR_BGR2GRAY);
@@ -352,7 +364,7 @@ void lineClasification(cv::Mat raw_color_camera){
         center_minDst = std::min(cv::norm(centerRotRectPoints_aux[0]-centerRotRectPoints_aux[1]), cv::norm(centerRotRectPoints_aux[1]-centerRotRectPoints_aux[2]));
         center_maxDst = std::max(cv::norm(centerRotRectPoints_aux[0]-centerRotRectPoints_aux[1]), cv::norm(centerRotRectPoints_aux[1]-centerRotRectPoints_aux[2]));
         //Labeling the size
-        cv::putText(centerLinesSegmentation, std::to_string(center_minDst) + " " + std::to_string(center_maxDst)+ " i:" + std::to_string(i),
+        cv::putText(centerLinesSegmentation, std::to_string(center_minDst) + " " + std::to_string(center_maxDst)+ " i:" + std::to_string(i)+ " " + std::to_string(cntCenterCandidates[i].size()),
                     cv::Point(centerBoundRect[i].tl().x-15, centerBoundRect[i].br().y+15), 
                     cv::FONT_HERSHEY_COMPLEX_SMALL , 0.7, CV_RGB(255,255,255), 1, cv::LINE_8, false);
         //Drawing the minimum bounding box
@@ -403,30 +415,66 @@ void lineClasification(cv::Mat raw_color_camera){
 
     //Check if there are detected center lines
     if(centerRegion.size()>2){
-        float centerLinePosition = getPositionAtBottom(centerRegion);
+        float centerLinePosition = getPositionAtBottom(centerRegion).x;
         float leftLinePosition = -999999999999;
         float rightLinePosition = 99999999999;
         for (size_t i = 0; i < indexLongLines.size(); i++)
         {
-            float aux = getPositionAtBottom(cntAll[indexLongLines.at(i)]); 
+            cv::Point auxPoint = getPositionAtBottom(cntAll[indexLongLines.at(i)]);
+            float aux = auxPoint.x; 
             //std::cout<<"POS LINE:\t"<<aux<<"\tPOS CENTER:\t"<<centerLinePosition<<"\n";
             if(aux > leftLinePosition && aux < centerLinePosition){
                 leftLineIndex = indexLongLines.at(i);
                 leftLinePosition = aux;
                 isLeftLine = true;
+                trackPositionLeft = auxPoint;
+                trackingLeft = true;
             }
             else if (aux < rightLinePosition && aux > centerLinePosition)
             {
                 rightLineIndex = indexLongLines.at(i);
                 rightLinePosition = aux;
                 isRightLine = true;
+                trackPositionRight = auxPoint;
+                trackingRight = true;
             }        
         }
+    }else
+    {
+        //Check if tracking is activated
+        if(trackingLeft){
+            //Check if there is a segment similar to the tracked position
+            for (size_t i = 0; i < indexLongLines.size() && !isLeftLine; i++)
+            {
+                cv::Point aux = getPositionAtBottom(cntAll[indexLongLines.at(i)]); 
+                if(cv::norm(aux-trackPositionLeft) < TOLERANCE_TRACKING){
+                    leftLineIndex = indexLongLines.at(i);
+                    isLeftLine = true;
+                    trackPositionLeft = aux;
+                }
+            }
+            //If no segment is found, then turn off the tracking (we lost the line)
+            if(!isLeftLine){
+                trackingLeft = false;
+            }
+        }
+        if(trackingRight){
+            //Check if there is a segment similar to the tracked position
+            for (size_t i = 0; i < indexLongLines.size() && !isRightLine; i++)
+            {
+                cv::Point aux = getPositionAtBottom(cntAll[indexLongLines.at(i)]); 
+                if(cv::norm(aux-trackPositionRight) < TOLERANCE_TRACKING){
+                    rightLineIndex = indexLongLines.at(i);
+                    isRightLine = true;
+                    trackPositionRight = aux;
+                }
+            }
+            //If no segment is found, then turn off the tracking (we lost the line)
+            if(!isRightLine){
+                trackingRight = false;
+            }            
+        }
     }
-
-    
-    
-
 
     // Dibujando ya los que sí quedaron finalmente-------------------------------------------------------
     for (int i=0; i<cntCenterCandidates.size(); i++){
@@ -471,11 +519,21 @@ void lineClasification(cv::Mat raw_color_camera){
 
     // for parking info processing
 
-    cv::imshow("Clasification logic", result);
+    //cv::Mat result2 = cv::Mat().zeros(binary_eagle.size(), CV_8UC3);
+    //cv::Mat kernel = (cv::Mat_<double>(3,3) << -1,0,1,-1,0,1,-1,0,1);
+    //cv::filter2D(binary_eagle,result2,-1,kernel);
+
+    //cv::imshow("Clasification logic", result);
     cv::imshow("Center lines segmentation", centerLinesSegmentation);
     cv::waitKey(0);
     // std::cout << std::endl;
-    return;
+    std::vector<cv::Point> empty;
+    std::vector<std::vector<cv::Point>> output;
+    if(isLeftLine)    output.insert(output.end(),cntAll[leftLineIndex]);
+    else    output.insert(output.end(), empty);
+    if(isRightLine)    output.insert(output.end(),cntAll[rightLineIndex]);
+    else    output.insert(output.end(), empty);
+    return output;
 }
 
 void test_algo(int mode, int set){
@@ -490,21 +548,23 @@ void test_algo(int mode, int set){
     // Ahora estamos con herr lisiado 1 y 2
 
     //std::string local_root_path = "/home/ubi/usb/";  // pa' camilo
-    std::string local_root_path = "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/";  // pa' Daniel
+    std::string local_root_path = "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/img/";  // pa' Daniel
 
-    root_path = local_root_path + "lisiado/";
-    switch (set)
-    {
-    case 0:
-        root_path = local_root_path + "lisiado/";
-        break;
-    case 1:
-        root_path = local_root_path + "lisiado2/";
-        break; 
-    default:
-        root_path = local_root_path + "lisiado/";
-        break;
-    }
+    root_path = local_root_path + "lisiado" +std::to_string(set) +"/";
+
+
+    // switch (set)
+    // {
+    // case 0:
+    //     root_path = local_root_path + "lisiado/";
+    //     break;
+    // case 1:
+    //     root_path = local_root_path + "lisiado2/";
+    //     break; 
+    // default:
+    //     root_path = local_root_path + "lisiado/";
+    //     break;
+    // }
 
     // root_path = "/home/ubi/usb/run" + run_id_string + "/";
     // root_path = "/home/ubi/TUDa_PSAF/camera_processing/test/"; // path for camilo
@@ -525,7 +585,11 @@ void test_algo(int mode, int set){
         std::cout << "Frame: " << std::to_string(frame) << " at: " << cam_img_name << std::endl;
         og_img = cv::imread(cam_img_name);                                              // cargar la imagen de la camara a color
         // proc_proposal(og_img);
-        lineClasification(og_img);
+        std::vector<std::vector<cv::Point>> output = lineClasification(og_img);
+        std::vector<std::vector<cv::Point>> left;
+        std::vector<std::vector<cv::Point>> right;
+        left.push_back(output[0]);
+        right.push_back(output[1]);
         // eagle_view_color = get_eagle_view(og_img, mode);                                // eagle view de la imagen original, a color
         // own_processed = inf_processing(og_img, mode);                                   // imagen raw a color procesada por los infos
         // own_processed_overlay = final_on_og(own_processed, eagle_view_color);
@@ -540,19 +604,25 @@ void test_algo(int mode, int set){
         // std::cout << ms_int.count() << "ms\n";
         std::cout << ms_double.count() << "ms\n";
 
-        if (record){
-            std::vector<std::vector<std::vector<cv::Point>>> output = lineClasification_aux(og_img);
-            cv::Mat rightLines = cv::Mat().zeros(cv::Size(640,640), CV_8UC3);     // where the result of the algorithm will be visualized
-            for (int i=0; i<output[0].size(); i++) cv::drawContours(rightLines, output[0], i, cv::Scalar(255,255,255), cv::FILLED, cv::LINE_8);
-            cv::imwrite(root_path + "lines_right_" + std::to_string(frame) + ".jpg", rightLines);
-            
-            cv::Mat centerLines = cv::Mat().zeros(cv::Size(640,640), CV_8UC3);     // where the result of the algorithm will be visualized
-            for (int i=0; i<output[1].size(); i++) cv::drawContours(centerLines, output[1], i, cv::Scalar(255,255,255), cv::FILLED, cv::LINE_8);
-            cv::imwrite(root_path + "lines_center_" + std::to_string(frame) + ".jpg", centerLines);
-            
+
+        if (record && output.size() > 0){
             cv::Mat leftLines = cv::Mat().zeros(cv::Size(640,640), CV_8UC3);     // where the result of the algorithm will be visualized
-            for (int i=0; i<output[2].size(); i++) cv::drawContours(leftLines, output[2], i, cv::Scalar(255,255,255), cv::FILLED, cv::LINE_8);
-            cv::imwrite(root_path + "lines_left_" + std::to_string(frame) + ".jpg", leftLines);
+            if(output[0].size() > 1){
+                cv::drawContours(leftLines, left, -1, cv::Scalar(255,255,255), cv::FILLED, cv::LINE_8);
+                cv::imwrite(local_root_path + "curveLeft/" + std::to_string(set) + "_" + std::to_string(frame) + ".jpg", leftLines);
+            }
+            
+            
+            // cv::Mat centerLines = cv::Mat().zeros(cv::Size(640,640), CV_8UC3);     // where the result of the algorithm will be visualized
+            // for (int i=0; i<output[1].size(); i++) cv::drawContours(centerLines, output[1], i, cv::Scalar(255,255,255), cv::FILLED, cv::LINE_8);
+            // cv::imwrite(root_path + "lines_center_" + std::to_string(frame) + ".jpg", centerLines);
+            
+            cv::Mat rightLines = cv::Mat().zeros(cv::Size(640,640), CV_8UC3);     // where the result of the algorithm will be visualized
+            if(output[1].size() > 1){
+                cv::drawContours(rightLines, right, -1, cv::Scalar(255,255,255), cv::FILLED, cv::LINE_8);
+                cv::imwrite(local_root_path + "curveRight/" + std::to_string(set) + "_" + std::to_string(frame) + ".jpg", rightLines);
+            }
+
         }
     }
     return;
@@ -1258,7 +1328,8 @@ std::vector<bool> filterConnectedCenterLines(std::vector<std::vector<cv::Point>>
                     //std::cout<<i<<" with "<<j;
                     check1 = isAligned(candidatesContours[i],candidatesContours[j]);
                     check2 = isAligned(candidatesContours[j],candidatesContours[i]);
-                    if(check1 and check2){
+                    std::cout<<"i: "<<i<<" j: "<<j<<"\t"<<check1<<" "<<check2<<"\tarea1: "<<candidatesContours[i].size()<<"\tarea2: "<<candidatesContours[j].size()<<"\n";
+                    if(check1 && check2){
                         output[i] = true;
                         output[j] = true;
                         //std::cout<<i<<" positive "<<j;
@@ -1273,7 +1344,7 @@ std::vector<bool> filterConnectedCenterLines(std::vector<std::vector<cv::Point>>
 
 bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2){
     const float TOLERANCE = 30; 
-    const float TOLERANCE_HIT = 10;
+    const float TOLERANCE_HIT = 30;
     const bool slope_mode = true;
     cv::Vec4f output1, output2;
     cv::fitLine(area1,output1,cv::DIST_L2, 0, 0.01, 0.01);
@@ -1327,7 +1398,7 @@ bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2){
     return false;
 }
 
-float getPositionAtBottom(std::vector<cv::Point> line){
+cv::Point getPositionAtBottom(std::vector<cv::Point> line){
     //const int HEIGHT_IMAGE = 480;
     //cv::Vec4f output;
     //cv::fitLine(line,output,cv::DIST_L2, 0, 0.01, 0.01);
@@ -1335,7 +1406,7 @@ float getPositionAtBottom(std::vector<cv::Point> line){
     //float x_test = output[2] + (HEIGHT_IMAGE - output[3])*(output[0]/output[1]);
     //return x_test;
 
-    return getMaxYPoint(line).x;
+    return getMaxYPoint(line);
 }
 
 cv::Point getMaxYPoint(std::vector<cv::Point> region){

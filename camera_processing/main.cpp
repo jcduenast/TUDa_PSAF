@@ -45,6 +45,7 @@ std::vector<bool> filterConnectedCenterLines(std::vector<std::vector<cv::Point>>
 bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2);
 float getPositionAtBottom(std::vector<cv::Point> line); 
 cv::Point getMaxYPoint(std::vector<cv::Point> region);
+std::vector<cv::Point> new_trajectory(std::vector<std::vector<std::vector<cv::Point>>> lines);
 
 int main (){
     test_algo(3,1);
@@ -266,6 +267,12 @@ void test_algo(int mode, int set){
         }
     }
     return;
+}
+
+std::vector<cv::Point> new_trajectory(std::vector<std::vector<std::vector<cv::Point>>> lines){
+    std::vector<cv::Point> output;  // dos puntitos na' más
+
+    return output;
 }
 
 cv::Mat final_on_og(cv::Mat img_final, cv::Mat img_og){

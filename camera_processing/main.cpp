@@ -36,7 +36,7 @@ cv::Mat car_on_projection(cv::Mat img_in, int mode);
 cv::Mat final_on_og(cv::Mat img_final, cv::Mat img_og); // img_final U8C1
 std::vector<std::vector<cv::Point>> proc_proposal(cv::Mat camera_raw_color);
 std::vector<std::vector<cv::Point>> lineClasification(cv::Mat raw_color_camera);
-std::vector<std::vector<std::vector<cv::Point>>> lineClasification_aux(cv::Mat raw_color_camera);
+std::vector<std::vector<std::vector<cv::Point>>> lineClasification_old(cv::Mat raw_color_camera);
 void test_algo(int mode, int set);
 std::vector<bool> filterConnectedCenterLines(std::vector<std::vector<cv::Point>> candidatesContours,std::vector<bool> isCandidate);
 bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2);

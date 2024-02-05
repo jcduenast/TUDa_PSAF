@@ -15,3 +15,9 @@ double homography_data_juan_daniel_hd[9] = {
     -3.405114138990458, -8.424546836001635, 1306.0723717743485,
     -0.4010313412675393, -16.013713357190248, 2041.407620865595,
     -0.000592193334817703, -0.026136198374075298, 1.0};
+
+const int IMG_WIDTH = 640;
+const int IMG_HEIGHT = 480;
+const int X_DIST_CALIB = 680;  // distance to the end of the ROI in pixels from the rear wheel axis
+const int X_FAR = 680;      // pixels in car coordinates (in the future in mm)
+const int X_CLOSE = 320;    // pixels in car coordinates (in the future in mm)

@@ -288,7 +288,7 @@ void test_algo(int mode, int set){
 }
 
 std::vector<cv::Point> new_trajectory(std::vector<std::vector<cv::Point>> lines){
-    std::vector<cv::Point> output;  // dos puntitos na' más en el espacio coordenado del carritu
+    std::vector<cv::Point> output;
     bool _r = lines[2].size()>0, _c = lines[1].size()>0, _l = lines[0].size()>0;     // if there is data about that line, it will be taken into account
 
     // Los puntos vienen organizados de abajo hacia arriba en la imagen (de mayor Y a menor Y)
@@ -314,48 +314,62 @@ std::vector<cv::Point> new_trajectory(std::vector<std::vector<cv::Point>> lines)
 
     std::vector<cv::Point> trajectoryPoints;
     float mean_x, mean_y, meanLaneWidth;
-    for (int i=0; i<len; i++){      // Revisar estimación del ancho!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!-----------------------------------------------------
-        // the 1.0 is so that it doesn't break by dividing and getting a zero value
-        meanLaneWidth += 1.0*((_l*_c)*(centerLine[i].x-leftLine[i].x) + (_c*_r)*(rightLine[i].x-centerLine[i].x) + (!_c*_l*_r)*(rightLine[i].x-leftLine[i].x))/(_l*_c+_c*_r+2*!_c*_l*_r);
+    if (_l&&_c || _c&&_r){
+        for (int i=0; i<len; i++){
+            // the 1.0 is so that it doesn't break by dividing and getting a zero value
+            // meanLaneWidth += 1.0*((_l*_c)*(centerLine[i].x-leftLine[i].x) + (_c*_r)*(rightLine[i].x-centerLine[i].x) + (!_c*_l*_r)*(rightLine[i].x-leftLine[i].x))/(_l*_c+_c*_r+2*!_c*_l*_r);
+            meanLaneWidth += 1.0*((_l*_c)*(centerLine[i].x-leftLine[i].x) + (_c*_r)*(rightLine[i].x-centerLine[i].x))/(_l*_c+_c*_r);
+        }
+        meanLaneWidth /= len;
+    }else{
+        meanLaneWidth = 200;
     }
-    meanLaneWidth /= 2*len;
-    std::cout << "new_trajectory mean width: " << std::to_string(meanLaneWidth) << std::endl;
-
-    meanLaneWidth = 200;
+    // std::cout << "new_trajectory mean width: " << std::to_string(meanLaneWidth) << std::endl;
 
     for (int i=0; i<len; i++){
-        // std::cout << "new_trajectory left: " << std::to_string(leftLine[i].x) << " aporte: " << std::to_string(_l*(leftLine[i].x+(0.5+rLD)*meanLaneWidth)) << std::endl;
-        // std::cout << "new_trajectory cent: " << std::to_string(centerLine[i].x) << " aporte: " << std::to_string(_c*(centerLine[i].x+(rLD-0.5)*meanLaneWidth)) << std::endl;
-        // std::cout << "new_trajectory righ: " << std::to_string(rightLine[i].x) << " aporte: " << std::to_string(_r*(rightLine[i].x-(1.5-rLD)*meanLaneWidth)) << std::endl;
         mean_x = 1.0*(_l*(leftLine[i].x+(0.5+rLD)*meanLaneWidth) + _c*(centerLine[i].x+(rLD-0.5)*meanLaneWidth) + _r*(rightLine[i].x-(1.5-rLD)*meanLaneWidth))/(_l+_c+_r);
         mean_y = 1.0*(_l*leftLine[i].y + _c*centerLine[i].y + _r*rightLine[i].y)/(_l+_c+_r);
         trajectoryPoints.insert(trajectoryPoints.begin(), cv::Point(mean_x, mean_y));
     }
 
-    cv::Vec4f line_aux = cv::Vec4f();
-    cv::fitLine(trajectoryPoints, line_aux, cv::DIST_L1, 0, 0.01, 0.01);
-    double vx = line_aux[0], vy = line_aux[1];
-    double x = line_aux[2], y = line_aux[3];
-    if (vx != 0)
-    {
-        for (int y_n = 0; y_n < img_ws.size().height; y_n = y_n + int(img_ws.size().height / 10))
-        {
-            if (vy != 0){
-                int x_n = int((y_n - y) * vx / vy) + x;
-                output.insert(output.begin(), cv::Point(x_n, y_n));
-            }else{
-                std::cout << "Caso no atendido aún. función getLineFromCnt: vy == 0\n" ;
-            }
-        }
-    }else{
-        std::cout << "Caso no atendido aún. función getLineFromCnt: vx == 0\n" ;
-    }
-    
+    // Now the processing is done in car coordinates!
+    std::vector<cv::Point> trajectoryPoints_carCoordinates = img2carCoordinateVector(trajectoryPoints);
+
     for (int i=0; i<trajectoryPoints.size(); i++){
         cv::circle(img_ws, trajectoryPoints[i], 4, cv::Scalar(50, 255, 255), 1);
     }
 
+    cv::Vec4f line_aux = cv::Vec4f();
+    cv::fitLine(trajectoryPoints_carCoordinates, line_aux, cv::DIST_L1, 0, 0.01, 0.01);
+    double vx = line_aux[0], vy = line_aux[1];
+    double x_0 = line_aux[2], y_0 = line_aux[3];
+
+    double y_close=0, y_far=0, x_far = X_FAR;
+    if (vx != 0)
+    {   
+        float m = vy/vx, b = y_0-m*x_0;
+        y_close = m*(X_CLOSE-x_0) + y_0;
+        y_far = m*(x_far-x_0) + y_0;
+        if (y_far > IMG_WIDTH/2){           // se salió de la ROI por la izq, hay que calcularlo ahora en el punto de corte con la vertical en y positivo
+            y_far = IMG_WIDTH/2;
+            x_far = 1/m*(y_far -b);
+        }else if (y_far < -IMG_WIDTH/2){    // se salió de la ROI por la der, hay que calcularlo ahora en el punto de corte con la vertical en y negativo
+            y_far = -IMG_WIDTH/2;
+            x_far = 1/m*(y_far -b);
+        }
+    }else{
+        std::cout << "Caso no atendido aún. función getLineFromCnt: vx == 0\n" ;
+    }
+
+    // trajectory output -> controller inputs
+    cv::Point close = car2imgCoordinate(cv::Point(X_CLOSE, y_close));
+    cv::Point far = car2imgCoordinate(cv::Point(x_far, y_far));
+    cv::circle(img_ws, close, 9, cv::Scalar(255, 50, 255), 2);
+    cv::circle(img_ws, far, 9, cv::Scalar(255, 50, 255), 2);
+
     cv::imshow("Trajectory Workspace", img_ws);
+    output.insert(output.begin(), cv::Point(X_CLOSE, y_close));
+    output.insert(output.begin(), cv::Point(x_far, y_far));
     return output;
 }
 

@@ -486,11 +486,31 @@ std::vector<std::vector<cv::Point>> lineClasification(cv::Mat raw_color_camera){
         cv::drawContours(centerLinesSegmentation, cntAll, rightLineIndex, cv::Scalar(0,0,255), cv::FILLED, cv::LINE_8);
         cv::Point aux = getMaxYPoint(cntAll[rightLineIndex]);
         std::cout<<"\nEl borde inferior del derecho es: "<<aux.x<<","<<aux.y<<"\n";
+        cv::Moments moments = cv::moments(cntAll[rightLineIndex],false);
+        std::cout<<"Ah por los momentos\n";
+        double huMoments[7];
+        cv::HuMoments(moments,huMoments);
+        for(int i = 0; i < 7; i++) {
+            huMoments[i] = -1 * copysign(1.0, huMoments[i]) * log10(abs(huMoments[i])); 
+        }
+        std::cout<<"Ah por los parqueos: "<<huMoments[1]<<"\n";
+        if(huMoments[1]>0){
+            cv::putText(centerLinesSegmentation,"PARKING!!!!!!!!!!!!!!!!!",cv::Point(50,50),cv::FONT_HERSHEY_SCRIPT_SIMPLEX , 1, CV_RGB(255,0,255), 1, cv::LINE_8, false);
+        }
     }
     if(isLeftLine){
         cv::drawContours(centerLinesSegmentation, cntAll, leftLineIndex, cv::Scalar(0,255,0), cv::FILLED, cv::LINE_8);
         cv::Point aux = getMaxYPoint(cntAll[leftLineIndex]);
         std::cout<<"\nEl borde inferior del izquierdo es: "<<aux.x<<","<<aux.y<<"\n";
+        cv::Moments moments = cv::moments(cntAll[leftLineIndex],false);
+        double huMoments[7];
+        cv::HuMoments(moments,huMoments);
+        for(int i = 0; i < 7; i++) {
+            huMoments[i] = -1 * copysign(1.0, huMoments[i]) * log10(abs(huMoments[i])); 
+        }
+        if(huMoments[1]>0){
+            cv::putText(centerLinesSegmentation,"PARKING LEFT!!!!!!!!!!!!!!!!!",cv::Point(50,50),cv::FONT_HERSHEY_PLAIN , 1, CV_RGB(255,255,0), 1, cv::LINE_8, false);
+        }
     }
 
     // Drawing contours and rectangles -----------------------------------------------------------------------
@@ -525,7 +545,7 @@ std::vector<std::vector<cv::Point>> lineClasification(cv::Mat raw_color_camera){
 
     //cv::imshow("Clasification logic", result);
     cv::imshow("Center lines segmentation", centerLinesSegmentation);
-    //cv::waitKey(0);
+    cv::waitKey(0);
     // std::cout << std::endl;
     std::vector<cv::Point> empty;
     std::vector<std::vector<cv::Point>> output;

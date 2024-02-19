@@ -444,7 +444,7 @@ std::vector<cv::Point> new_trajectory(std::vector<std::vector<cv::Point>> lines)
     // definimos una nueva línea recta, yeiii
     std::vector<cv::Point> containedLine;
     if (vx!=0){
-        int x_start = 150;
+        int x_start = 250;
         float m = vy/vx, b = y_0-m*x_0;
         int y_start = m*x_start+b;
         if(y_start>320){

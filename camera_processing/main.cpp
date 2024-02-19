@@ -400,6 +400,7 @@ std::vector<cv::Point> new_trajectory(std::vector<std::vector<cv::Point>> lines)
         }
         // meanLaneWidth /= len;
     }else{
+        if(_l)
         meanLaneWidth = 200;
         meanLaneWidth_arr.insert(meanLaneWidth_arr.end(), meanLaneWidth);
     }

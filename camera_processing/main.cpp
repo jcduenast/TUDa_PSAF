@@ -62,12 +62,17 @@ int main (int argc, char *argv[]){
     // setup_test();
     // compare_record_w_own();
     int set = 2;
+    int daniel = 0;
     if(argc > 1){
         set = atoi(argv[1]);
     }
+    if(argc > 2){
+        daniel = atoi(argv[2]);
+        std::cout<<"Sí recibió: "<<daniel<<"\n";
+    }
     trackingLeft = false;
     trackingRight = false;
-    test_algo(3,set);
+    test_algo(daniel,set);
     return 0;
 }
 
@@ -310,7 +315,7 @@ std::vector<std::vector<cv::Point>> lineClasification(cv::Mat raw_color_camera){
     return output;
 }
 
-void test_algo(int mode, int set){
+void test_algo(int daniel, int set){
     int frame = 0;
     std::string root_path, cam_img_name, prc_img_name;
     cv::Mat own_processed, car_processed, og_img, eagle_view_color, own_processed_overlay;
@@ -321,8 +326,11 @@ void test_algo(int mode, int set){
 
     // Ahora estamos con herr lisiado 1 y 2
 
+    
     std::string local_root_path = "/home/ubi/usb/";  // pa' camilo
-    // std::string local_root_path = "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/";  // pa' Daniel
+    if(daniel == 1){
+        local_root_path = "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/img/";  // pa' Daniel
+    }
 
     root_path = local_root_path + "lisiado" + std::to_string(set) + "/";
 

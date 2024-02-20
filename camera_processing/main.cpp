@@ -345,9 +345,11 @@ void test_algo(int daniel, int set){
     for(;; frame++){
         cam_img_name = root_path + "raw_img_" + std::to_string(frame) + ".jpg";        // hasta la 2 está con png, de ahí en adelante con .jpg
         std::cout << "Frame: " << std::to_string(frame) << " at: " << cam_img_name << std::endl;
-        og_img = cv::imread(cam_img_name);                                              // cargar la imagen de la camara a color
+        og_img = cv::imread(cam_img_name);                                          // cargar la imagen de la camara a color
         laneLines = lineClasification(og_img);
+        std::cout<<"Classification successful\n";
         trajectory = new_trajectory(laneLines);
+        std::cout<<"Trajectory successful\n";
         cv::waitKey(0);
         
 
@@ -388,6 +390,11 @@ std::vector<cv::Point> new_trajectory(std::vector<std::vector<cv::Point>> lines)
     
     int len = std::max({leftLine.size(), centerLine.size(), rightLine.size()});
     if (len==0) {
+        for (int i = 0; i < 10; i++)
+        {
+            // output.insert(output.end(), );
+            output.push_back(cv::Point(100. + i * 10, 0.));
+        }
         return output;
     }
     
@@ -399,18 +406,53 @@ std::vector<cv::Point> new_trajectory(std::vector<std::vector<cv::Point>> lines)
     std::vector<cv::Point> trajectoryPoints;
     float mean_x, mean_y, meanLaneWidth;
     std::vector<float> meanLaneWidth_arr;
-    if (_l&&_c || _c&&_r){
-        for (int i=0; i<len; i++){
+    if ((_l && _c) || (_c && _r) || (!_c && _l && _r))
+    {
+        for (int i = 0; i < len; i++)
+        {
             // the 1.0 is so that it doesn't break by dividing and getting a zero value
-            // meanLaneWidth += 1.0*((_l*_c)*(centerLine[i].x-leftLine[i].x) + (_c*_r)*(rightLine[i].x-centerLine[i].x) + (!_c*_l*_r)*(rightLine[i].x-leftLine[i].x))/(_l*_c+_c*_r+2*!_c*_l*_r);
-            meanLaneWidth = 1.0*((_l*_c)*(centerLine[i].x-leftLine[i].x) + (_c*_r)*(rightLine[i].x-centerLine[i].x))/(_l*_c+_c*_r);
+            meanLaneWidth = 1.0 * ((_l * _c) * (centerLine[i].x - leftLine[i].x) + (_c * _r) * (rightLine[i].x - centerLine[i].x) + (!_c * _l * _r) * (rightLine[i].x - leftLine[i].x)) / (_l * _c + _c * _r + 2 * !_c * _l * _r);
+            // meanLaneWidth = float(1.0 * ((_l * _c) * (center[i].x - left[i].x) + (_c * _r) * (right[i].x - center[i].x)) / (_l * _c + _c * _r));
+            // meanLaneWidth = 200;
             meanLaneWidth_arr.insert(meanLaneWidth_arr.end(), meanLaneWidth);
         }
-        // meanLaneWidth /= len;
-    }else{
-        meanLaneWidth = 200;
-        meanLaneWidth_arr.insert(meanLaneWidth_arr.end(), meanLaneWidth);
     }
+    else
+    {
+        float m, x, y, vx, vy, angleCorrection;
+        if (_l && !(_c || _r))
+        {
+            float d = leftLine.front().x - leftLine.back().x;
+            if(d == 0)
+                d = 0.1;                
+            m = (leftLine.front().y - leftLine.back().y) / d;
+            angleCorrection = 1 / abs(sin(atan(m)));
+        }
+        if (_r && !(_c || _l))
+        {
+            float d = rightLine.front().x - rightLine.back().x;
+            if(d == 0)
+                d = 0.1;
+            m = (rightLine.front().y - rightLine.back().y) / d;
+            angleCorrection = 1 / abs(sin(atan(m)));
+        }
+        if (_c && !(_l || _r))
+        {
+            float d = centerLine.front().x - centerLine.back().x;
+            if(d == 0)
+                d = 0.1;
+            m = (centerLine.front().y - centerLine.back().y) / d;
+            angleCorrection = 1 / abs(sin(atan(m)));
+        }
+        for (int i = 0; i < len; i++)
+        {
+            meanLaneWidth_arr.insert(meanLaneWidth_arr.end(), 200 * angleCorrection);
+        }
+
+    }
+    // std::cout << "new_trajectory mean width: " << std::to_string(meanLaneWidth) << std::endl;
+    meanLaneWidth = 200;
+
     // std::cout << "new_trajectory mean width: " << std::to_string(meanLaneWidth) << std::endl;
 
     for (int i=0; i<len; i++){
@@ -419,6 +461,7 @@ std::vector<cv::Point> new_trajectory(std::vector<std::vector<cv::Point>> lines)
         mean_y = 1.0*(_l*leftLine[i].y + _c*centerLine[i].y + _r*rightLine[i].y)/(_l+_c+_r);
         trajectoryPoints.insert(trajectoryPoints.begin(), cv::Point(mean_x, mean_y));
     }
+
 
     // Now the processing is done in car coordinates!
     std::vector<cv::Point> trajectoryPoints_carCoordinates = img2carCoordinateVector(trajectoryPoints);

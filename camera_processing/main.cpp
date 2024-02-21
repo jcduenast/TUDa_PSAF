@@ -25,6 +25,8 @@
 // to measure execution time
 #include <chrono>
 
+#include <algorithm>
+
 // using namespace cv;
 // using namespace std;
 
@@ -46,12 +48,15 @@ cv::Point getPositionAtBottom(std::vector<cv::Point> line);
 cv::Point getMaxYPoint(std::vector<cv::Point> region);
 std::vector<cv::Point> new_trajectory(std::vector<std::vector<cv::Point>> lines);
 std::vector<cv::Point> getLineFromCnt(std::vector<cv::Point> contour, int img_width, int img_heihgt);
+std::vector<cv::Point> getLineFromCnt2(std::vector<cv::Point> contour, int img_width, int img_heihgt, bool leftEdge);
+std::vector<cv::Point> getEdge(std::vector<cv::Point> points,bool leftEdge);
 
 cv::Point img2carCoordinate(cv::Point imgPoint);
 cv::Point car2imgCoordinate(cv::Point carSpacePoint);
 std::vector<cv::Point> img2carCoordinateVector(std::vector<cv::Point> line_in_img_coordinates);
 std::vector<cv::Point> car2imgCoordinateVector(std::vector<cv::Point> line_in_car_coordinates);
 void drawError(cv::Mat img_in, cv::Point point_close, cv::Point point_far);
+
 
 bool trackingLeft;
 bool trackingRight;
@@ -300,13 +305,13 @@ std::vector<std::vector<cv::Point>> lineClasification(cv::Mat raw_color_camera){
     
     if(isLeftLine){
         // std::cout << "getLineFromCnt: " << std::to_string(leftLineIndex) << " " << std::to_string(cntAll[leftLineIndex].size()) << std::endl;
-        leftLinePoints = getLineFromCnt(cntAll[leftLineIndex], binary_eagle.size().width, binary_eagle.size().height);
+        leftLinePoints = getLineFromCnt2(cntAll[leftLineIndex], binary_eagle.size().width, binary_eagle.size().height,false);
     }
     if(centerRegion.size() > 0){
         centerLinePoints = getLineFromCnt(centerRegion, binary_eagle.size().width, binary_eagle.size().height);
     }
     if(isRightLine){
-        rightLinePoints = getLineFromCnt(cntAll[rightLineIndex], binary_eagle.size().width, binary_eagle.size().height);
+        rightLinePoints = getLineFromCnt2(cntAll[rightLineIndex], binary_eagle.size().width, binary_eagle.size().height,true);
     }
 
     output.insert(output.begin(), rightLinePoints);
@@ -1053,6 +1058,31 @@ std::vector<cv::Point> getLineFromCnt(std::vector<cv::Point> contour, int img_wi
     return output;
 }
 
+
+std::vector<cv::Point> getLineFromCnt2(std::vector<cv::Point> contour, int img_width, int img_heihgt,bool leftEdge){
+
+    std::vector<cv::Point> output;
+    cv::Vec4f line_aux = cv::Vec4f();
+    cv::fitLine(getEdge(contour,leftEdge), line_aux, cv::DIST_L1, 0, 0.01, 0.01);
+    double vx = line_aux[0], vy = line_aux[1];
+    double x = line_aux[2], y = line_aux[3];
+    if (vx != 0)
+    {
+        for (int y_n = 0; y_n < img_heihgt; y_n = y_n + int(img_heihgt / 10))
+        {
+            if (vy != 0){
+                int x_n = int((y_n - y) * vx / vy) + x;
+                output.insert(output.begin(), cv::Point(x_n, y_n));
+            }else{
+                std::cout << "Caso no atendido aún. función getLineFromCnt: vy == 0\n" ;
+            }
+        }
+    }else{
+        std::cout << "Caso no atendido aún. función getLineFromCnt: vx == 0\n" ;
+    }
+    return output;
+}
+
 cv::Point img2carCoordinate(cv::Point imgPoint){
 	cv::Point point_in_car_coordinates;
 	point_in_car_coordinates.x = X_DIST_CALIB - imgPoint.y;
@@ -1096,3 +1126,30 @@ void drawError(cv::Mat img_in, cv::Point point_close, cv::Point point_far){
     return;
 }
 
+std::vector<cv::Point> getEdge(std::vector<cv::Point> points, bool leftEdge){
+    if(leftEdge)
+        std::sort(points.begin(), points.end(), [](const cv::Point& a, const cv::Point& b) {
+            return (a.y == b.y) ? (a.x < b.x) : (a.y < b.y);
+        });
+    else
+        std::sort(points.begin(), points.end(), [](const cv::Point& a, const cv::Point& b) {
+            return (a.y == b.y) ? (a.x > b.x) : (a.y < b.y);
+        });
+
+    std::vector<cv::Point> resultPoints;
+
+    // Iterar sobre los puntos ordenados y seleccionar el mínimo 'y' para cada 'x'
+    for (const cv::Point& p : points) {
+        // Si el resultado está vacío o el punto actual tiene un valor de 'x' diferente al último añadido
+        if (resultPoints.empty() || p.y != resultPoints.back().y) {
+            resultPoints.push_back(p);
+        }
+    }
+
+    return resultPoints;
+    //cv::Mat result2 = cv::Mat().zeros(640,480, CV_8UC1);
+    //std::vector<std::vector<cv::Point>> a;
+    //a.push_back(resultPoints);
+    //cv::drawContours(result2, a, 0, 255,1);
+    //cv::imshow("contorno",result2);
+}

@@ -1,0 +1,3 @@
+/home/ubi/TUDa_PSAF/parking/CMakeFiles/parking.dir
+/home/ubi/TUDa_PSAF/parking/CMakeFiles/edit_cache.dir
+/home/ubi/TUDa_PSAF/parking/CMakeFiles/rebuild_cache.dir

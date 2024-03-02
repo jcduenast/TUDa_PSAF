@@ -73,9 +73,7 @@ cv::Mat parking_detection(cv::Mat img){
     cv::adaptiveThreshold(blurred, binary, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, block_size, const_subtrahend);
     binary_eagle = get_eagle_view(binary);
     
-
     // experiment
-    
     cv::Mat test = cv::Mat(); //.zeros(img.size(), CV_8UC3);
     cv::Mat test2 = cv::Mat(); //.zeros(img.size(), CV_8UC3);
     cv::Mat gray2, blurred2, binary2, eagle;
@@ -100,10 +98,7 @@ cv::Mat parking_detection(cv::Mat img){
     std::vector<cv::Rect> boundRect(cnt.size());
     std::vector<cv::RotatedRect> boundMinArea(cnt.size());
     cv::Point2f rotatedRectPoints_aux[4];
-    std::vector<cv::RotatedRect> minEllipse(cnt.size());    // vamos a comparar la relación entre los ejes mayor y menor [didn't yet]
     std::vector<cv::Vec4f> lineCnt(cnt.size());
-    std::vector<cv::Moments> mu(cnt.size());
-    std::vector<double[7]> huMo(cnt.size());
 
     int cntBiggestIdx = -1;
     size_t cntBiggestSize = 0;
@@ -114,8 +109,6 @@ cv::Mat parking_detection(cv::Mat img){
     }
 
     for (size_t i=0; i<cnt.size(); i++){
-        mu[i] = cv::moments(cnt[i]);
-        cv::HuMoments(mu[i], huMo[i]);
         boundRect[i] = cv::boundingRect(cnt[i]);
         boundMinArea[i] = cv::minAreaRect(cnt[i]);
                 
@@ -127,7 +120,7 @@ cv::Mat parking_detection(cv::Mat img){
             cv::putText(classified, std::to_string(cnt.at(i).size()), cv::Point(boundRect[i].x, boundRect[i].y+15), cv::FONT_HERSHEY_COMPLEX_SMALL , 0.8, CV_RGB(255,255,255), 1, cv::LINE_8, false);
         }
     }
-    cv::imshow("Test", test);
+    // cv::imshow("Test", test);
     return classified;
 }
 
@@ -135,6 +128,7 @@ cv::Mat get_eagle_view(cv::Mat img_in){
     cv::Mat projected;
     cv::Mat homography;
     homography = (cv::Mat(3, 3, CV_64F, homography_data_juan_daniel_hd)).clone();
+    // cv::warpPerspective(img_in, projected, homography, cv::Size(640, 490), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
     cv::warpPerspective(img_in, projected, homography, cv::Size(640, 490));
     return projected;
 }

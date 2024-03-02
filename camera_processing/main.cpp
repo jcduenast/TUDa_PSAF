@@ -47,10 +47,23 @@ bool isAligned(std::vector<cv::Point> area1, std::vector<cv::Point> area2);
 float getPositionAtBottom(std::vector<cv::Point> line); 
 cv::Point getMaxYPoint(std::vector<cv::Point> region);
 
-int main (){
+cv::Mat projectOnRaw(cv::Mat raw, cv::Mat classified);
+
+int main (int argc, char *argv[]){
+    // cv::Mat projected = perspective_forward();
+    // cv::imshow("Forward", projected);
+    // cv::imshow("Back", perspective_back(projected));
+    // cv::waitKey(0);
+
+    int set = 10;
+    if(argc > 1){
+        set = atoi(argv[1]);
+    }
     // setup_test();
     // compare_record_w_own();
-    test_algo(3,1);
+
+
+    test_algo(3,set);
     return 0;
 }
 
@@ -471,8 +484,10 @@ void lineClasification(cv::Mat raw_color_camera){
 
     // for parking info processing
 
-    cv::imshow("Clasification logic", result);
-    cv::imshow("Center lines segmentation", centerLinesSegmentation);
+    // cv::imshow("Clasification logic", result);
+    // cv::imshow("Center lines segmentation", centerLinesSegmentation);
+    cv::Mat superposition = projectOnRaw(raw_color_camera, centerLinesSegmentation);
+    cv::imshow("Classification on raw", superposition);
     cv::waitKey(0);
     // std::cout << std::endl;
     return;
@@ -489,24 +504,24 @@ void test_algo(int mode, int set){
 
     // Ahora estamos con herr lisiado 1 y 2
 
-    //std::string local_root_path = "/home/ubi/usb/";  // pa' camilo
-    std::string local_root_path = "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/";  // pa' Daniel
+    std::string local_root_path = "/home/ubi/usb/";  // pa' camilo
+    // std::string local_root_path = "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/";  // pa' Daniel
 
-    root_path = local_root_path + "lisiado/";
-    switch (set)
-    {
-    case 0:
-        root_path = local_root_path + "lisiado/";
-        break;
-    case 1:
-        root_path = local_root_path + "lisiado2/";
-        break; 
-    default:
-        root_path = local_root_path + "lisiado/";
-        break;
-    }
+    // root_path = local_root_path + "lisiado/";
+    // switch (set)
+    // {
+    // case 0:
+    //     root_path = local_root_path + "lisiado/";
+    //     break;
+    // case 1:
+    //     root_path = local_root_path + "lisiado2/";
+    //     break; 
+    // default:
+    //     root_path = local_root_path + "lisiado/";
+    //     break;
+    // }
 
-    // root_path = "/home/ubi/usb/run" + run_id_string + "/";
+    root_path = "/home/ubi/usb/invalido" + run_id_string + "/";
     // root_path = "/home/ubi/TUDa_PSAF/camera_processing/test/"; // path for camilo
     // root_path = "/home/daniel/Documentos/TU/PSAF/TUDa_PSAF/camera_processing/test/"; // path for Daniel
 
@@ -515,7 +530,7 @@ void test_algo(int mode, int set){
     using std::chrono::duration;
     using std::chrono::milliseconds;
 
-    bool record = true;
+    bool record = false;
 
     for(;; frame++){
         auto t1 = high_resolution_clock::now();     // Start time measure 
@@ -885,7 +900,7 @@ cv::Mat get_eagle_view(cv::Mat img_in, int mode){
         break;
         case 3:     // la nueva, en HD y la cámara apuntando para abajo
             homography = (cv::Mat(3, 3, CV_64F, homography_data_juan_daniel_hd)).clone();
-            cv::warpPerspective(img_in, projected, homography, cv::Size(640, 490));
+            cv::warpPerspective(img_in, projected, homography, cv::Size(640, 480));
         break;
         default:
             homography = (cv::Mat(3, 3, CV_64F, homography_data_juan_daniel_hd)).clone();
@@ -1236,7 +1251,7 @@ std::vector<std::vector<std::vector<cv::Point>>> lineClasification_aux(cv::Mat r
 
     // for parking info processing
 
-    cv::imshow("Clasification logic", result);
+    // cv::imshow("Clasification logic", result);
     // cv::waitKey(0);
     // std::cout << std::endl;
     std::vector<std::vector<std::vector<cv::Point>>> output;
@@ -1377,3 +1392,31 @@ cv::Point getMaxYPoint(std::vector<cv::Point> region){
 //             std::cout << std::to_string(rotatedRectPoints_aux[3].x) << " > " << std::to_string(binary_eagle.size().width/2) << std::endl;
 //         }
 //     }
+
+cv::Mat projectOnRaw(cv::Mat raw, cv::Mat classified){
+    cv::Mat raw_eagle, raw_eagle_bg, homography, raw_superposed_roi, raw_superposed_roi_eagle, class_mask, class_mask_inv, class_gray, class_fg;
+    
+    homography = (cv::Mat(3, 3, CV_64F, homography_data_juan_daniel_hd)).clone();
+    cv::warpPerspective(raw, raw_eagle, homography, cv::Size(640, 480));            // project to eagle perspective
+    cv::cvtColor(classified, class_gray, cv::COLOR_BGR2GRAY);                       // color to grayscale
+    cv::threshold(class_gray, class_mask_inv, 1, 255, cv::THRESH_BINARY_INV);       // take regions in black (inverse of low threshold)
+    cv::bitwise_and(raw_eagle, raw_eagle, raw_eagle_bg, class_mask_inv);            // black out sections of the eagle raw to overwrite
+    cv::bitwise_not(class_mask_inv, class_mask);                                    // info on white
+    cv::bitwise_and(classified, classified, class_fg, class_mask);                  // blackout classifier parts not to pass along (maybe already in black)
+    cv::add(raw_eagle_bg, class_fg, raw_superposed_roi_eagle);                          // add background and foreground
+    cv::warpPerspective(raw_superposed_roi_eagle, raw_superposed_roi, homography, cv::Size(640, 480), cv::WARP_INVERSE_MAP);
+
+    // now the same but with the original perspective
+    cv::Mat raw_roi, raw_roi_mask, raw_roi_mask_inv, raw_bg, raw_superposed_roi_gray, raw_superposed;
+    cv::cvtColor(raw_superposed_roi, raw_superposed_roi_gray, cv::COLOR_BGR2GRAY);          // get gray from color
+    cv::threshold(raw_superposed_roi_gray, raw_roi_mask_inv, 1, 255, cv::THRESH_BINARY_INV);    // take regions in black (inverse of low threshold)
+    cv::bitwise_and(raw, raw, raw_bg, raw_roi_mask_inv);                            // create background
+    cv::add(raw_bg, raw_superposed_roi, raw_superposed);
+
+    // cv::imshow("raw_bg", raw_bg);
+    // cv::imshow("raw_roi_mask_inv", raw_roi_mask_inv);
+    // cv::imshow("raw_superposed_eagle", raw_superposed_eagle);
+    // cv::imshow("raw_superposed_complete", raw_superposed_complete);
+
+    return raw_superposed;
+}

@@ -10,6 +10,7 @@
 #include <opencv2/imgproc.hpp>      // contours
 #include <stdio.h>
 #include <opencv2/opencv.hpp>
+#include <opencv2/stitching.hpp>
 
 // para el manejo de strings
 #include <sstream>
@@ -22,19 +23,40 @@
 
 #include "main.hpp"
 
+void parking_detection_test(int set, int expSet);
+void test_img_stitching();
 cv::Mat parking_detection(cv::Mat img);
 cv::Mat get_eagle_view(cv::Mat img_in);
+cv::Mat imgStitching(cv::Mat img1, cv::Mat img2);
 
 int main (int argc, char *argv[]){
-    int set = 2;
-    int expSet = 3;    // 0 para run, 1 para lisiado, 2 para tracking, 3 invalido
-    if(argc > 1){
-        set = atoi(argv[1]);
-        if(argc > 2){
-            expSet = atoi(argv[2]);
-        }
-    }
+    // int set = 2;
+    // int expSet = 3;    // 0 para run, 1 para lisiado, 2 para tracking, 3 invalido
+    // if(argc > 1){
+    //     set = atoi(argv[1]);
+    //     if(argc > 2){
+    //         expSet = atoi(argv[2]);
+    //     }
+    // }
+    // parking_detection_test(int set, int expSet);
+    test_img_stitching();
+    
 
+    return 0;
+}
+
+void test_img_stitching(){
+    cv::Mat result, raw1, raw2;
+    int img_id = 165;
+    raw1 = cv::imread("/home/ubi/usb/final_este_si02/raw_img_167.jpg");
+    raw2 = cv::imread("/home/ubi/usb/final_este_si02/raw_img_169.jpg");
+    result = imgStitching(raw1, raw2);
+    cv::imshow("result", result);
+    cv::waitKey(0);
+    return;
+}
+
+void parking_detection_test(int set, int expSet){
     int frame = 0;
     std::string root_path, cam_img_name;
     cv::Mat og_img, parking_img;
@@ -60,7 +82,27 @@ int main (int argc, char *argv[]){
         cv::imshow("Parking detection", parking_img);
         cv::waitKey(0);
     }
-    return 0;
+    return;
+}
+
+cv::Mat imgStitching(cv::Mat img1, cv::Mat img2){
+    cv::Mat result, eagle1, eagle2;
+    eagle1 = get_eagle_view(img1);
+    eagle2 = get_eagle_view(img2);
+
+    bool divide_images = false;
+    // cv::Stitcher::Mode mode = cv::Stitcher::PANORAMA;
+    cv::Stitcher::Mode mode = cv::Stitcher::SCANS;
+    std::vector<cv::Mat> imgs={eagle1, eagle2};
+    std::string result_name = "result.jpg";
+    
+    cv::Ptr<cv::Stitcher> stitcher = cv::Stitcher::create(mode);
+    cv::Stitcher::Status status = stitcher->stitch(imgs, result);
+
+    // cv::imwrite(result_name, result);
+    
+
+    return result;
 }
 
 cv::Mat parking_detection(cv::Mat img){

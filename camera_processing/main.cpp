@@ -471,14 +471,14 @@ std::vector<cv::Point> new_trajectory(std::vector<std::vector<cv::Point>> lines)
 
     // draw new trajectory, verde inicio, rojo al final
     int rojoIntensidad=0, verdeIntensidad=255;
-    cv::circle(img_ws, car2imgCoordinate(containedLine.front()), 2, cv::Scalar(0,verdeIntensidad,rojoIntensidad), 2);
-    for(size_t point=0; point<containedLine.size(); point++){
-        rojoIntensidad = point*(255/containedLine.size());
-        verdeIntensidad = (containedLine.size()-point)*(255/containedLine.size());
-        cv::circle(img_ws, car2imgCoordinate(containedLine.at(point)), 3, cv::Scalar(255,255,255), -1);
-        cv::circle(img_ws, car2imgCoordinate(containedLine.at(point)), 5+(point/2), cv::Scalar(0,verdeIntensidad,rojoIntensidad), 2);
-    }
-    cv::circle(img_ws, car2imgCoordinate(containedLine.back()), 2, cv::Scalar(0,verdeIntensidad,rojoIntensidad), 2);
+    // cv::circle(img_ws, car2imgCoordinate(containedLine.front()), 2, cv::Scalar(0,verdeIntensidad,rojoIntensidad), 2);
+    // for(size_t point=0; point<containedLine.size(); point++){
+    //     rojoIntensidad = point*(255/containedLine.size());
+    //     verdeIntensidad = (containedLine.size()-point)*(255/containedLine.size());
+    //     cv::circle(img_ws, car2imgCoordinate(containedLine.at(point)), 3, cv::Scalar(255,255,255), -1);
+    //     cv::circle(img_ws, car2imgCoordinate(containedLine.at(point)), 5+(point/2), cv::Scalar(0,verdeIntensidad,rojoIntensidad), 2);
+    // }
+    // cv::circle(img_ws, car2imgCoordinate(containedLine.back()), 2, cv::Scalar(0,verdeIntensidad,rojoIntensidad), 2);
 
     // trajectory output -> controller inputs
     cv::Point close_img = car2imgCoordinate(cv::Point(X_CLOSE, y_close));
@@ -490,6 +490,7 @@ std::vector<cv::Point> new_trajectory(std::vector<std::vector<cv::Point>> lines)
     drawError(img_ws, close_img, far_img);
 
     cv::imshow("Trajectory Workspace", img_ws);
+    cv::imwrite("test/trajectory_2.jpg", img_ws);
     output.insert(output.begin(), cv::Point(x_far, y_far));
     output.insert(output.begin(), cv::Point(X_CLOSE, y_close));
     return output;

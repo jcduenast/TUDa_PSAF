@@ -308,7 +308,7 @@ std::vector<std::vector<cv::Point>> lineClasification(cv::Mat raw_color_camera){
         leftLinePoints = getLineFromCnt2(cntAll[leftLineIndex], binary_eagle.size().width, binary_eagle.size().height,false);
     }
     if(centerRegion.size() > 0){
-        centerLinePoints = getLineFromCnt(centerRegion, binary_eagle.size().width, binary_eagle.size().height);
+        centerLinePoints = getLineFromCnt2(centerRegion, binary_eagle.size().width, binary_eagle.size().height, false);
     }
     if(isRightLine){
         rightLinePoints = getLineFromCnt2(cntAll[rightLineIndex], binary_eagle.size().width, binary_eagle.size().height,true);
@@ -456,23 +456,50 @@ std::vector<cv::Point> new_trajectory(std::vector<std::vector<cv::Point>> lines)
 
     }
     // std::cout << "new_trajectory mean width: " << std::to_string(meanLaneWidth) << std::endl;
-    meanLaneWidth = 200;
+    meanLaneWidth = 80;
 
     // std::cout << "new_trajectory mean width: " << std::to_string(meanLaneWidth) << std::endl;
+    for (int i=1; i<len; i++){  //(int i=1; i<len; i++)
+        //   //mean_x = 1.0*(_l*(leftLine[i].x+(0.5+rLD)*meanLaneWidth) + _c*(centerLine[i].x+(rLD-0.5)*meanLaneWidth) + _r*(rightLine[i].x-(1.5-rLD)*meanLaneWidth))/(_l+_c+_r);
+        //mean_x = 1.0*(_l*(leftLine[i].x+(0.5+rLD)*meanLaneWidth_arr.at(i)) + _c*(centerLine[i].x+(rLD-0.5)*meanLaneWidth_arr.at(i)) + _r*(rightLine[i].x-(1.5-rLD)*meanLaneWidth_arr.at(i)))/(_l+_c+_r);
+        //mean_y = 1.0*(_l*leftLine[i].y + _c*centerLine[i].y + _r*rightLine[i].y)/(_l+_c+_r);
 
-    for (int i=0; i<len; i++){
-        // mean_x = 1.0*(_l*(leftLine[i].x+(0.5+rLD)*meanLaneWidth) + _c*(centerLine[i].x+(rLD-0.5)*meanLaneWidth) + _r*(rightLine[i].x-(1.5-rLD)*meanLaneWidth))/(_l+_c+_r);
-        mean_x = 1.0*(_l*(leftLine[i].x+(0.5+rLD)*meanLaneWidth_arr.at(i)) + _c*(centerLine[i].x+(rLD-0.5)*meanLaneWidth_arr.at(i)) + _r*(rightLine[i].x-(1.5-rLD)*meanLaneWidth_arr.at(i)))/(_l+_c+_r);
-        mean_y = 1.0*(_l*leftLine[i].y + _c*centerLine[i].y + _r*rightLine[i].y)/(_l+_c+_r);
-        trajectoryPoints.insert(trajectoryPoints.begin(), cv::Point(mean_x, mean_y));
+        if(_r && rightLine.size() > 1){
+            float d = cv::norm(rightLine[i] - rightLine[i-1]);
+            float dx = rightLine[i-1].x - rightLine[i].x;
+            float dy = rightLine[i-1].y - rightLine[i].y;
+
+            float y_add = dx * meanLaneWidth / d;
+            float x_add = dy * meanLaneWidth / d;
+            mean_x = rightLine[i].x - x_add;
+            mean_y = rightLine[i].y + y_add; 
+        }
+        //trajectoryPoints.insert(trajectoryPoints.begin(), cv::Point(mean_x, mean_y));
+        else if(_l && leftLine.size() > 1){
+            float d = cv::norm(leftLine[i] - leftLine[i-1]);
+            float dx = leftLine[i-1].x - leftLine[i].x;
+            float dy = leftLine[i-1].y - leftLine[i].y;
+
+            float y_add = dx * 3.3 * meanLaneWidth / d;
+            float x_add = dy * 3.3 * meanLaneWidth / d;
+            mean_x = leftLine[i].x + x_add;
+            mean_y = leftLine[i].y - y_add; 
+        }
+        trajectoryPoints.insert(trajectoryPoints.end(), cv::Point(mean_x, mean_y));
+        //cv::circle(img_ws, cv::Point(mean_x, mean_y), 4, cv::Scalar(50, 255, 255), 1);
+        //cv::imshow("Trajectory Workspace", img_ws);
+        //cv::waitKey();
     }
 
 
     // Now the processing is done in car coordinates!
     std::vector<cv::Point> trajectoryPoints_carCoordinates = img2carCoordinateVector(trajectoryPoints);
 
-    for (int i=0; i<trajectoryPoints.size(); i++){
-        cv::circle(img_ws, trajectoryPoints[i], 4, cv::Scalar(50, 255, 255), 1);
+    for (int i=0; i<10; i++){
+        cv::circle(img_ws, trajectoryPoints[i], 8, cv::Scalar(50, 255, 255), 1);
+    }
+    for (int i=9; i<trajectoryPoints.size(); i++){
+        cv::circle(img_ws, trajectoryPoints[i], 4, cv::Scalar(255, 255, 50), 1);
     }
 
     cv::Vec4f line_aux = cv::Vec4f();
@@ -526,15 +553,15 @@ std::vector<cv::Point> new_trajectory(std::vector<std::vector<cv::Point>> lines)
     }
 
     // draw new trajectory, verde inicio, rojo al final
-    int rojoIntensidad=0, verdeIntensidad=255;
-    cv::circle(img_ws, car2imgCoordinate(containedLine.front()), 2, cv::Scalar(0,verdeIntensidad,rojoIntensidad), 2);
-    for(size_t point=0; point<containedLine.size(); point++){
-        rojoIntensidad = point*(255/containedLine.size());
-        verdeIntensidad = (containedLine.size()-point)*(255/containedLine.size());
-        cv::circle(img_ws, car2imgCoordinate(containedLine.at(point)), 3, cv::Scalar(255,255,255), -1);
-        cv::circle(img_ws, car2imgCoordinate(containedLine.at(point)), 5+(point/2), cv::Scalar(0,verdeIntensidad,rojoIntensidad), 2);
-    }
-    cv::circle(img_ws, car2imgCoordinate(containedLine.back()), 2, cv::Scalar(0,verdeIntensidad,rojoIntensidad), 2);
+    // int rojoIntensidad=0, verdeIntensidad=255;
+    // cv::circle(img_ws, car2imgCoordinate(containedLine.front()), 2, cv::Scalar(0,verdeIntensidad,rojoIntensidad), 2);
+    // for(size_t point=0; point<containedLine.size(); point++){
+    //     rojoIntensidad = point*(255/containedLine.size());
+    //     verdeIntensidad = (containedLine.size()-point)*(255/containedLine.size());
+    //     cv::circle(img_ws, car2imgCoordinate(containedLine.at(point)), 3, cv::Scalar(255,255,255), -1);
+    //     cv::circle(img_ws, car2imgCoordinate(containedLine.at(point)), 5+(point/2), cv::Scalar(0,verdeIntensidad,rojoIntensidad), 2);
+    // }
+    // cv::circle(img_ws, car2imgCoordinate(containedLine.back()), 2, cv::Scalar(0,verdeIntensidad,rojoIntensidad), 2);
 
     // trajectory output -> controller inputs
     cv::Point close_img = car2imgCoordinate(cv::Point(X_CLOSE, y_close));
@@ -1062,24 +1089,15 @@ std::vector<cv::Point> getLineFromCnt(std::vector<cv::Point> contour, int img_wi
 std::vector<cv::Point> getLineFromCnt2(std::vector<cv::Point> contour, int img_width, int img_heihgt,bool leftEdge){
 
     std::vector<cv::Point> output;
-    cv::Vec4f line_aux = cv::Vec4f();
-    cv::fitLine(getEdge(contour,leftEdge), line_aux, cv::DIST_L1, 0, 0.01, 0.01);
-    double vx = line_aux[0], vy = line_aux[1];
-    double x = line_aux[2], y = line_aux[3];
-    if (vx != 0)
+    std::vector<cv::Point> points = getEdge(contour,leftEdge);
+    int size = points.size();
+    float step = size / 10;
+
+    for (size_t i = 0; i < 10; i++)
     {
-        for (int y_n = 0; y_n < img_heihgt; y_n = y_n + int(img_heihgt / 10))
-        {
-            if (vy != 0){
-                int x_n = int((y_n - y) * vx / vy) + x;
-                output.insert(output.begin(), cv::Point(x_n, y_n));
-            }else{
-                std::cout << "Caso no atendido aún. función getLineFromCnt: vy == 0\n" ;
-            }
-        }
-    }else{
-        std::cout << "Caso no atendido aún. función getLineFromCnt: vx == 0\n" ;
+        output.push_back(points.at(i*step));
     }
+    
     return output;
 }
 
@@ -1141,15 +1159,18 @@ std::vector<cv::Point> getEdge(std::vector<cv::Point> points, bool leftEdge){
     // Iterar sobre los puntos ordenados y seleccionar el mínimo 'y' para cada 'x'
     for (const cv::Point& p : points) {
         // Si el resultado está vacío o el punto actual tiene un valor de 'x' diferente al último añadido
-        if (resultPoints.empty() || p.y != resultPoints.back().y) {
-            resultPoints.push_back(p);
+        if (resultPoints.empty() || p.y != resultPoints.front().y) {
+            resultPoints.insert(resultPoints.begin(),p);
         }
     }
 
+    // cv::Mat result2 = cv::Mat().zeros(480,640, CV_8UC1);
+    // std::vector<std::vector<cv::Point>> a;
+    // a.push_back(resultPoints);
+    // cv::drawContours(result2, a, 0, 255,1);
+    // cv::imshow("contorno",result2);
+
     return resultPoints;
-    //cv::Mat result2 = cv::Mat().zeros(640,480, CV_8UC1);
-    //std::vector<std::vector<cv::Point>> a;
-    //a.push_back(resultPoints);
-    //cv::drawContours(result2, a, 0, 255,1);
-    //cv::imshow("contorno",result2);
+   
 }
+

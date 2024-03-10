@@ -6,4 +6,4 @@ cmake_install.*
 CMakeCache.txt
 img/
 python/
-test/
+test/lines_*
